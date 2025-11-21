@@ -17,8 +17,20 @@ app.get('/', (req, res)=>{
   res.json({message: "backend running"})
 })
 
-const userRoutes = require('./routes/user')
+const userRoutes = require('./routes/userRoutes')
 app.use('/user', userRoutes);
+
+const tableRoutes = require('./routes/tableRoutes')
+app.use('/table', tableRoutes);
+
+const categoryRoutes = require('./routes/categoryRoutes')
+app.use('/category', categoryRoutes);
+
+const productRoutes = require('./routes/productRoutes')
+app.use('/product', productRoutes);
+
+const orderRoutes = require('./routes/orderRoutes')
+app.use('/order', orderRoutes);
 
 // Start server
 app.listen(port, () => {
