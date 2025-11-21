@@ -1,20 +1,22 @@
-const express = require("express");
-const cors = require("cors");
-require("dotenv").config();
+const mysql = require('mysql2');
+const db = require('./config/db')
 
+const express = require('express')
 const app = express();
-const PORT = process.env.PORT || 5000;
+
+const cors = require('cors');
+app.use(cors());
+
+const port = process.env.PORT || 8080;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("Hello from Express backend!");
-});
+const userRoutes = require('./routes/user')
+app.use('/user', userRoutes);
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
