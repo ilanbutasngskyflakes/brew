@@ -1,9 +1,8 @@
-import express from "express";
-import { getTables, addTable } from "../controllers/tableController.js";
-
+const express = require("express");
 const router = express.Router();
+const tableController = require("../controllers/tableController");
 
-router.get("/", getTables);
-router.post("/", addTable);
+router.get("/", tableController.getTables);
+router.post("/add", tableController.addTable);
 
-export default router;
+module.exports = router;

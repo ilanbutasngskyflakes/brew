@@ -1,8 +1,8 @@
-const db = require("../config/db");
-const bcrypt = require("bcrypt");
+import db from "../config/db.js";
+import bcrypt from "bcrypt";
 
 // Get users
-exports.getUsers = async (req, res) => {
+export const getUsers = async (req, res) => {
   try {
     const [rows] = await db.execute(
       "SELECT id, name, first_name, last_name, role FROM tbl_users"
@@ -15,7 +15,7 @@ exports.getUsers = async (req, res) => {
 };
 
 // Get user by id
-exports.getUser = async (req, res) => {
+export const getUser = async (req, res) => {
   try {
     const id = parseInt(req.params.id || req.query.id, 10);
     if (!id) return res.status(400).json({ message: "User id is required" });
@@ -36,8 +36,8 @@ exports.getUser = async (req, res) => {
   }
 };
 
-// sign in
-exports.addUser = async (req, res) => {
+// sign in / add user
+export const addUser = async (req, res) => {
   try {
     const { name, first_name, last_name, password, role } = req.body;
 
@@ -68,14 +68,12 @@ exports.addUser = async (req, res) => {
   }
 };
 
-// log in
-exports.verifyUser = async (req, res) => {
+// log in / verify user
+export const verifyUser = async (req, res) => {
   try {
     const { name, password } = req.body;
     if (!name || !password) {
-      return res
-        .status(400)
-        .json({ message: "name and password required" });
+      return res.status(400).json({ message: "name and password required" });
     }
 
     const [rows] = await db.execute(
@@ -108,7 +106,7 @@ exports.verifyUser = async (req, res) => {
 };
 
 // update user
-exports.updateUser = async (req, res) => {
+export const updateUser = async (req, res) => {
   try {
     const id = parseInt(req.params.id || req.body.id, 10);
     if (!id) return res.status(400).json({ message: "User id is required" });
@@ -139,9 +137,7 @@ exports.updateUser = async (req, res) => {
     }
 
     values.push(id);
-    const sql = `UPDATE tbl_users SET ${fields.join(
-      ", "
-    )} WHERE id = ? AND is_deleted = 0`;
+    const sql = `UPDATE tbl_users SET ${fields.join(", ")} WHERE id = ?`;
     const [result] = await db.execute(sql, values);
 
     if (result.affectedRows === 0) {
@@ -158,21 +154,18 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// delete user
-exports.deleteUser = async (req, res) => {
+// delete user (hard delete)
+export const deleteUser = async (req, res) => {
   try {
     const id = req.params.id || req.body.id;
     if (!id) return res.status(400).json({ message: "User id is required" });
 
-    const [result] = await db.execute(
-      "UPDATE tbl_users SET is_deleted = 1, deleted_at = NOW() WHERE id = ? AND is_deleted = 0",
-      [id]
-    );
+    const [result] = await db.execute("DELETE FROM tbl_users WHERE id = ?", [
+      id,
+    ]);
 
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ message: "User not found or already deleted" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     return res.json({ message: "User deleted" });
@@ -183,7 +176,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 // change password
-exports.changePassword = async (req, res) => {
+export const changePassword = async (req, res) => {
   try {
     const id = req.params.id || req.body.id;
     const { current_password, new_password } = req.body;
@@ -200,7 +193,7 @@ exports.changePassword = async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      "SELECT password FROM tbl_users WHERE id = ? AND is_deleted = 0 LIMIT 1",
+      "SELECT password FROM tbl_users WHERE id = ? LIMIT 1",
       [id]
     );
 
