@@ -13,6 +13,10 @@ const port = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res)=>{
+  res.json({message: "backend running"})
+})
+
 const userRoutes = require('./routes/user')
 app.use('/user', userRoutes);
 
