@@ -5,13 +5,21 @@ const express = require('express')
 const app = express();
 
 const cors = require('cors');
-app.use(cors());
+app.use(cors()); // single use
 
 const port = process.env.PORT || 8080;
 
 // Middleware
-app.use(cors());
+// app.use(cors()); // removed duplicate
 app.use(express.json());
+
+// Test DB connection if available
+if (db && typeof db.connect === 'function') {
+  db.connect(err => {
+    if (err) console.error('DB connection error:', err);
+    else console.log('DB connected');
+  });
+}
 
 app.get('/', (req, res)=>{
   res.json({message: "backend running"})
