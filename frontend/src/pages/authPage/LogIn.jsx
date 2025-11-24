@@ -101,20 +101,30 @@ export default function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage("");
+  e.preventDefault();
+  setMessage("");
 
-    try {
-      const res = await api.post("http://localhost:8080/user/auth", form);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+  try {
+    const res = await api.post("http://localhost:8080/user/auth", form);
+    const user = res.data.user;
 
-      setMessage("Login successful!");
-      setTimeout(() => navigate("/dashboard"), 1000);
-    } catch (err) {
-      setMessage(err.response?.data?.message || "Invalid credentials");
-    }
-  };
+    // Save user in localStorage
+    localStorage.setItem("user", JSON.stringify(user));
 
+    setMessage("Login successful!");
+
+    // Redirect based on role
+    setTimeout(() => {
+      if (user.role === "admin") {
+        navigate("/dashboard");
+      } else {
+        navigate("/cashier"); // cashier page
+      }
+    }, 500);
+  } catch (err) {
+    setMessage(err.response?.data?.message || "Invalid credentials");
+  }
+};
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0441b1] to-blue-700 px-4">
       <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl border-t-4 border-[#0441b1]">

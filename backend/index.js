@@ -40,6 +40,8 @@ app.use('/product', productRoutes);
 const orderRoutes = require('./routes/orderRoutes')
 app.use('/order', orderRoutes);
 
+app.use("/uploads", express.static("uploads"));
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

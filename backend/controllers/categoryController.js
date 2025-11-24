@@ -3,8 +3,9 @@ import db from "../config/db.js";
 export const getCategories = async (req, res) => {
   try {
     const [rows] = await db.execute(
-      "SELECT id, name, shortcut FROM tbl_category WHERE is_deleted = 0"
-    );
+  "SELECT id, name FROM tbl_category"
+);
+
     res.json(rows);
   } catch (error) {
     console.error(error);
