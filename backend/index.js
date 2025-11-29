@@ -42,6 +42,11 @@ app.use('/order', orderRoutes);
 
 app.use("/uploads", express.static("uploads"));
 
+const variantRoutes = require('./routes/variantRoutes');
+app.use("/variants", variantRoutes);
+
+
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

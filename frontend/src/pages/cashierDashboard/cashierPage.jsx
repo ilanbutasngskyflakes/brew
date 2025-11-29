@@ -1,14 +1,127 @@
+// import { useState, useEffect } from "react";
+// import axios from "axios";
+
+// export default function CashierPage() {
+//   const [products, setProducts] = useState([]);
+//   const [cart, setCart] = useState([]);
+
+//   // Fetch products from backend
+//   const fetchProducts = async () => {
+//     try {
+//       const res = await axios.get("http://localhost:8080/product"); // replace with your API
+//       setProducts(res.data);
+//     } catch (error) {
+//       console.error("Error fetching products:", error);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchProducts();
+//   }, []);
+
+//   const addToCart = (product) => {
+//     const existing = cart.find((item) => item.id === product.id);
+//     if (existing) {
+//       setCart(
+//         cart.map((item) =>
+//           item.id === product.id
+//             ? { ...item, quantity: item.quantity + 1 }
+//             : item
+//         )
+//       );
+//     } else {
+//       setCart([...cart, { ...product, quantity: 1 }]);
+//     }
+//   };
+
+//   const removeFromCart = (productId) => {
+//     setCart(cart.filter((item) => item.id !== productId));
+//   };
+
+//   const totalPrice = cart.reduce(
+//     (total, item) => total + item.price * item.quantity,
+//     0
+//   );
+
+//   return (
+//     <div className="flex flex-col md:flex-row gap-6">
+//       {/* Product List */}
+//       <div className="flex-1 bg-white p-6 rounded-xl shadow-lg">
+//         <h2 className="text-2xl font-bold mb-4">Products</h2>
+//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+//           {products.map((prod) => (
+//             <div
+//               key={prod.id}
+//               className="border p-4 rounded-lg flex flex-col justify-between hover:shadow-md transition"
+//             >
+//               <h3 className="font-semibold">{prod.product_name}</h3>
+//               <p className="text-sm text-gray-600 mb-2">
+//                 {prod.product_description}
+//               </p>
+//               <span className="font-bold mb-2">${prod.price}</span>
+//               <button
+//                 className="mt-auto bg-[#0d45ce] text-white px-3 py-1 rounded hover:bg-blue-800 transition"
+//                 onClick={() => addToCart(prod)}
+//               >
+//                 Add to Cart
+//               </button>
+//             </div>
+//           ))}
+//         </div>
+//       </div>
+
+//       {/* Cart Section */}
+//       <div className="w-full md:w-1/3 bg-white p-6 rounded-xl shadow-lg">
+//         <h2 className="text-2xl font-bold mb-4">Cart</h2>
+//         {cart.length === 0 ? (
+//           <p className="text-gray-600">Cart is empty.</p>
+//         ) : (
+//           <ul className="space-y-3">
+//             {cart.map((item) => (
+//               <li key={item.id} className="flex justify-between items-center">
+//                 <div>
+//                   {item.product_name} x {item.quantity}
+//                 </div>
+//                 <div className="flex gap-2 items-center">
+//                   <span>${item.price * item.quantity}</span>
+//                   <button
+//                     className="text-red-600 hover:text-red-800"
+//                     onClick={() => removeFromCart(item.id)}
+//                   >
+//                     Remove
+//                   </button>
+//                 </div>
+//               </li>
+//             ))}
+//           </ul>
+//         )}
+//         <div className="mt-4 border-t pt-4 font-bold text-lg flex justify-between">
+//           <span>Total:</span>
+//           <span>₱{totalPrice.toFixed(2)}</span>
+//         </div>
+//         <button
+//           className="mt-4 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition disabled:opacity-50"
+//           disabled={cart.length === 0}
+//         >
+//           Checkout
+//         </button>
+//       </div>
+//     </div>
+//   );
+// }
+
 import { useState, useEffect } from "react";
 import axios from "axios";
 
 export default function CashierPage() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
+  const [isDiscounted, setIsDiscounted] = useState(false); // NEW
 
   // Fetch products from backend
   const fetchProducts = async () => {
     try {
-      const res = await axios.get("http://localhost:8080/product"); // replace with your API
+      const res = await axios.get("http://localhost:8080/product");
       setProducts(res.data);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -19,35 +132,57 @@ export default function CashierPage() {
     fetchProducts();
   }, []);
 
-  const addToCart = (product) => {
-    const existing = cart.find((item) => item.id === product.id);
+  const addToCart = (product, size) => {
+    const price =
+      size === "12oz" ? product.price_12oz : product.price_16oz;
+
+    const key = `${product.id}-${size}`;
+
+    const existing = cart.find((item) => item.key === key);
+
     if (existing) {
       setCart(
         cart.map((item) =>
-          item.id === product.id
+          item.key === key
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       );
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      setCart([
+        ...cart,
+        {
+          key,
+          id: product.id,
+          product_name: product.product_name,
+          size,
+          price,
+          quantity: 1,
+        },
+      ]);
     }
   };
 
-  const removeFromCart = (productId) => {
-    setCart(cart.filter((item) => item.id !== productId));
+  const removeFromCart = (key) => {
+    setCart(cart.filter((item) => item.key !== key));
   };
 
+  // Compute total
   const totalPrice = cart.reduce(
     (total, item) => total + item.price * item.quantity,
     0
   );
+
+  const discountedTotal = isDiscounted
+    ? Math.max(totalPrice - 5, 0)
+    : totalPrice;
 
   return (
     <div className="flex flex-col md:flex-row gap-6">
       {/* Product List */}
       <div className="flex-1 bg-white p-6 rounded-xl shadow-lg">
         <h2 className="text-2xl font-bold mb-4">Products</h2>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map((prod) => (
             <div
@@ -55,16 +190,29 @@ export default function CashierPage() {
               className="border p-4 rounded-lg flex flex-col justify-between hover:shadow-md transition"
             >
               <h3 className="font-semibold">{prod.product_name}</h3>
-              <p className="text-sm text-gray-600 mb-2">
-                {prod.product_description}
-              </p>
-              <span className="font-bold mb-2">${prod.price}</span>
-              <button
-                className="mt-auto bg-[#0d45ce] text-white px-3 py-1 rounded hover:bg-blue-800 transition"
-                onClick={() => addToCart(prod)}
-              >
-                Add to Cart
-              </button>
+              <p className="text-sm text-gray-600 mb-2">{prod.description}</p>
+
+              {/* Price Display */}
+              <div className="text-sm mb-3">
+                <p>12oz: ₱{prod.price_12oz}</p>
+                <p>16oz: ₱{prod.price_16oz}</p>
+              </div>
+
+              {/* Size Buttons */}
+              <div className="flex gap-2 mt-auto">
+                <button
+                  className="bg-[#0d45ce] text-white px-3 py-1 rounded hover:bg-blue-800 transition"
+                  onClick={() => addToCart(prod, "12oz")}
+                >
+                  12oz
+                </button>
+                <button
+                  className="bg-[#0d45ce] text-white px-3 py-1 rounded hover:bg-blue-800 transition"
+                  onClick={() => addToCart(prod, "16oz")}
+                >
+                  16oz
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -73,20 +221,25 @@ export default function CashierPage() {
       {/* Cart Section */}
       <div className="w-full md:w-1/3 bg-white p-6 rounded-xl shadow-lg">
         <h2 className="text-2xl font-bold mb-4">Cart</h2>
+
         {cart.length === 0 ? (
           <p className="text-gray-600">Cart is empty.</p>
         ) : (
           <ul className="space-y-3">
             {cart.map((item) => (
-              <li key={item.id} className="flex justify-between items-center">
+              <li
+                key={item.key}
+                className="flex justify-between items-center"
+              >
                 <div>
-                  {item.product_name} x {item.quantity}
+                  {item.product_name} ({item.size}) x {item.quantity}
                 </div>
+
                 <div className="flex gap-2 items-center">
-                  <span>${item.price * item.quantity}</span>
+                  <span>₱{item.price * item.quantity}</span>
                   <button
                     className="text-red-600 hover:text-red-800"
-                    onClick={() => removeFromCart(item.id)}
+                    onClick={() => removeFromCart(item.key)}
                   >
                     Remove
                   </button>
@@ -95,10 +248,27 @@ export default function CashierPage() {
             ))}
           </ul>
         )}
+
+        {/* Discount Option */}
+        <div className="mt-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isDiscounted}
+              onChange={() => setIsDiscounted(!isDiscounted)}
+            />
+            <span className="font-semibold text-sm">
+              Senior / PWD Discount (-₱5)
+            </span>
+          </label>
+        </div>
+
+        {/* Total */}
         <div className="mt-4 border-t pt-4 font-bold text-lg flex justify-between">
           <span>Total:</span>
-          <span>₱{totalPrice.toFixed(2)}</span>
+          <span>₱{discountedTotal.toFixed(2)}</span>
         </div>
+
         <button
           className="mt-4 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition disabled:opacity-50"
           disabled={cart.length === 0}
@@ -109,3 +279,4 @@ export default function CashierPage() {
     </div>
   );
 }
+
