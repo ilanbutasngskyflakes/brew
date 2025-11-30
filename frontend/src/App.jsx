@@ -7,6 +7,8 @@ import Cashier from "./pages/cashierDashboard/cashierPage";
 import ProductsPage from "./pages/adminDashboard/Product/productPage"; 
 import ProductDashboard from "./pages/adminDashboard/Product/productPage";
 import ProductDetails from "./pages/adminDashboard/Product/productDetails";
+import OrderHistory from "./pages/cashierDashboard/orderHistory";
+import Settings from "./pages/adminDashboard/Settings/userProfile"; 
 
 function App() {
   return (
@@ -19,19 +21,16 @@ function App() {
 
         {/* Admin Dashboard */}
         <Route path="/dashboard" element={<Dashboard />}>
-
-          {/* EXISTING: your previous product page */}
           <Route path="product" element={<ProductsPage />} />
-
-          {/* NEW: Product Dashboard with Variants */}
           <Route path="product" element={<ProductDashboard />} />
-
-          {/* NEW: Details Page for Adding Variants */}
-          <Route path="product/:id" element={<ProductDetails />} />
+          <Route path="products/:id" element={<ProductDetails />} />
+          <Route path="settings" element={<Settings/>} />
         </Route>
 
         {/* Cashier */}
         <Route path="/cashier" element={<Cashier />} />
+        <Route path="/cashier/order" element={<OrderHistory />} />
+
       </Routes>
     </BrowserRouter>
   );

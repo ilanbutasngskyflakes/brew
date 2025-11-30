@@ -6,7 +6,7 @@ export default function ProductDetails() {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [variants, setVariants] = useState([]);
-  const [variantForm, setVariantForm] = useState({ name: "", quantity: 0, price: 0, status: "active" });
+  const [variantForm, setVariantForm] = useState({ name: "", quantity: "", price: "", status: "active" });
   const [editVariantId, setEditVariantId] = useState(null);
   const navigate = useNavigate();
 
@@ -30,34 +30,21 @@ export default function ProductDetails() {
   };
 
   const submitVariant = async (e) => {
-  e.preventDefault();
-  try {
-    if (editVariantId) {
-      // UPDATE variant
-      await api.put(`/variants/${editVariantId}`, { 
-        name: variantForm.name,
-        quantity: Number(variantForm.quantity),
-        price: Number(variantForm.price),
-        status: variantForm.status
-      });
-      setEditVariantId(null);
-    } else {
-      // ADD variant
-      await api.post("/variants/add", { 
-        product_id: Number(id),
-        name: variantForm.name,
-        quantity: Number(variantForm.quantity),
-        price: Number(variantForm.price),
-        status: variantForm.status
-      });
+    e.preventDefault();
+    try {
+      if (editVariantId) {
+        await api.put(`/variants/${editVariantId}`, { ...variantForm });
+        setEditVariantId(null);
+      } else {
+        await api.post("/variants/add", { product_id: id, ...variantForm });
+      }
+      setVariantForm({ name: "", quantity: 0, price: 0, status: "active" });
+      await loadProduct();
+    } catch (err) {
+      console.error("Error saving variant:", err);
+      alert("Error saving variant");
     }
-    setVariantForm({ name: "", quantity: 0, price: 0, status: "active" });
-    await loadProduct();
-  } catch (err) {
-    console.error("Error saving variant:", err.response?.data || err.message);
-    alert("Error saving variant");
-  }
-};
+  };
 
   const editVariant = (v) => {
     setEditVariantId(v.id);
@@ -78,31 +65,31 @@ export default function ProductDetails() {
   if (!product) return <div className="p-6 text-center text-gray-500">Loading...</div>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
-        className="text-blue-600 hover:underline font-medium"
+        className="text-blue-600 hover:underline font-medium mb-2"
       >
         &larr; Back
       </button>
 
       {/* Product Info */}
-      <div className="bg-white p-6 rounded-xl shadow-md flex flex-col sm:flex-row gap-6 items-center">
+      <div className="bg-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row gap-6 items-center">
         <img
           src={`http://localhost:8080/uploads/${product.image}`}
           alt={product.product_name}
-          className="w-full sm:w-48 h-48 object-cover rounded-lg border"
+          className="w-full sm:w-48 h-48 object-cover rounded-xl border"
         />
         <div className="flex-1 space-y-2">
-          <h2 className="text-2xl font-bold">{product.product_name}</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{product.product_name}</h2>
           <p className="text-gray-600">{product.product_description}</p>
         </div>
       </div>
 
       {/* Variants Section */}
-      <div className="bg-white p-6 rounded-xl shadow-md space-y-4">
-        <h3 className="text-xl font-semibold">Variants</h3>
+      <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
+        <h3 className="text-xl font-semibold text-gray-800">Variants</h3>
 
         {/* Variant List */}
         {variants.length === 0 ? (
@@ -112,24 +99,24 @@ export default function ProductDetails() {
             {variants.map((v) => (
               <li
                 key={v.id}
-                className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50 transition"
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 border rounded-xl hover:bg-gray-50 transition"
               >
                 <div>
-                  <div className="font-medium">{v.name}</div>
-                  <div className="text-sm text-gray-600">
+                  <div className="font-medium text-gray-700">{v.name}</div>
+                  <div className="text-sm text-gray-500 mt-1">
                     ₱{v.price} • qty: {v.quantity} • {v.status}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-2 sm:mt-0">
                   <button
                     onClick={() => editVariant(v)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg transition"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => deleteVariant(v.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md"
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition"
                   >
                     Delete
                   </button>
@@ -146,7 +133,7 @@ export default function ProductDetails() {
             value={variantForm.name}
             onChange={handleVariantChange}
             placeholder="Variant name (e.g., 12 oz)"
-            className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
           <input
@@ -155,7 +142,7 @@ export default function ProductDetails() {
             value={variantForm.price}
             onChange={handleVariantChange}
             placeholder="Price"
-            className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
           <input
@@ -164,14 +151,14 @@ export default function ProductDetails() {
             value={variantForm.quantity}
             onChange={handleVariantChange}
             placeholder="Quantity"
-            className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
           <select
             name="status"
             value={variantForm.status}
             onChange={handleVariantChange}
-            className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -179,7 +166,7 @@ export default function ProductDetails() {
 
           <button
             type="submit"
-            className="sm:col-span-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition"
+            className="sm:col-span-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-2xl transition"
           >
             {editVariantId ? "Update Variant" : "Add Variant"}
           </button>
