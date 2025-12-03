@@ -25,13 +25,15 @@ const upload = multer({ storage, fileFilter });
 // -------------------- PRODUCT ROUTES --------------------
 
 // Get all products
-router.get("/", productController.getProducts);
+// router.get("/", productController.getProducts);
+router.get("/", productController.getProductsFull);
 
 // Get single product + its variants
 router.get("/:id", productController.getProductWithVariants);
 
 // Add product (image optional)
-router.post("/add", upload.single("image"), productController.addProduct);
+// router.post("/add", upload.single("image"), productController.addProduct);
+router.post("/add", upload.single("image"), productController.addProductFull);
 
 // Update product (image optional)
 router.put("/:id", upload.single("image"), productController.updateProduct);

@@ -1,52 +1,45 @@
 import { useState, useEffect } from "react";
 import api from "../../../../api/api";
 
-export default function Create({ formData = {}, isEditing, onSubmit, onDelete, onClose }) {
-  const [form, setForm] = useState(formData);
+export default function Create({ formData = {}, isEditing }) {
+  const [form, setForm] = useState({
+    product_name: "",
+    product_description: "",
+    category_id: "",
+    image: null,
+  });
   const [imagePreview, setImagePreview] = useState("");
   const [categories, setCategories] = useState([]);
-
-  // NEW: Variants
-  const [variants, setVariants] = useState(formData.variants || [
-    { name: "", price: "", qty: "" }
+  const [variants, setVariants] = useState([
+    { variant_name: "", price: 0, ingredients: [] },
   ]);
+  const [ingredients, setIngredients] = useState([]);
 
-  // Load categories
+  // Load categories and ingredients
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadData = async () => {
       try {
-        const { data } = await api.get("/category");
-        setCategories(data);
+        const catRes = await api.get("/category");
+        setCategories(catRes.data);
+
+        const ingRes = await api.get("/ingredients");
+        setIngredients(ingRes.data);
       } catch (err) {
-        console.error("Cannot fetch categories:", err);
+        console.error(err);
       }
     };
-    loadCategories();
+    loadData();
   }, []);
 
-  // Update when editing
+  // Update form data if editing
   useEffect(() => {
-    setForm(formData);
-
-    // Set variants if editing
-    setVariants(formData.variants || [
-      { name: "", price: "", qty: "" }
-    ]);
-
-    setImagePreview(
-      formData?.image
-        ? typeof formData.image === "string"
-          ? `http://localhost:8080/uploads/${formData.image}`
-          : URL.createObjectURL(formData.image)
-        : ""
-    );
+    if (formData.product_name) setForm({ ...formData });
+    if (formData.variants) setVariants(formData.variants);
   }, [formData]);
 
-
-  // Handle Input Change
+  // Handle form inputs
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-
     if (name === "image" && files?.length > 0) {
       setForm({ ...form, image: files[0] });
       setImagePreview(URL.createObjectURL(files[0]));
@@ -55,174 +48,234 @@ export default function Create({ formData = {}, isEditing, onSubmit, onDelete, o
     }
   };
 
-  // Handle Variant Change
+  // Variant inputs
   const handleVariantChange = (index, field, value) => {
     const updated = [...variants];
     updated[index][field] = value;
     setVariants(updated);
   };
 
-  // Add Variant
-  const addVariant = (e) => {
-    e.preventDefault();
-    setVariants([...variants, { name: "", price: "", qty: "" }]);
+  // Ingredient for variant
+  const handleIngredientChange = (
+    variantIndex,
+    ingredientId,
+    amount,
+    checked
+  ) => {
+    const updated = [...variants];
+    if (!updated[variantIndex].ingredients)
+      updated[variantIndex].ingredients = [];
+
+    const existingIndex = updated[variantIndex].ingredients.findIndex(
+      (i) => i.ingredient_id === ingredientId
+    );
+
+    if (checked) {
+      if (existingIndex === -1) {
+        updated[variantIndex].ingredients.push({
+          ingredient_id: ingredientId,
+          amount,
+        });
+      } else {
+        updated[variantIndex].ingredients[existingIndex].amount = amount;
+      }
+    } else {
+      if (existingIndex !== -1) {
+        updated[variantIndex].ingredients.splice(existingIndex, 1);
+      }
+    }
+
+    setVariants(updated);
   };
 
-  // Submit
-  const handleSubmit = (e) => {
+  const addVariant = (e) => {
+    e.preventDefault();
+    setVariants([
+      ...variants,
+      { variant_name: "", price: 0, ingredients: [] },
+    ]);
+  };
+
+  // Submit handler
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const data = new FormData();
-    data.append("category_id", form.category_id);
-    data.append("product_name", form.product_name);
+    try {
+      const data = new FormData();
+      data.append("product_name", form.product_name);
+      data.append("product_description", form.product_description || "");
+      data.append("category_id", form.category_id);
+      if (form.image instanceof File) data.append("image", form.image);
+      data.append("variants", JSON.stringify(variants));
 
-    if (form.product_description?.trim()) {
-      data.append("product_description", form.product_description.trim());
+      const res = await api.post("/product/add", data);
+      alert("Product added successfully!");
+      // Optionally redirect or clear form
+    } catch (err) {
+      console.error("Error adding product:", err);
+      alert("Failed to add product");
     }
-
-    if (form.image instanceof File) {
-      data.append("image", form.image);
-    }
-
-    // IMPORTANT: Include variants
-    data.append("variants", JSON.stringify(variants));
-
-    onSubmit(data); // Send to backend
   };
 
   return (
-    <>
-      <div className="w-full h-scree">
-        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2 p-4">
-
-          {/* Product Name */}
-          <div className="flex flex-col gap-1 mb-2">
-            <label className="text-sm text-gray-600">Product Name</label>
-            <input
-              type="text"
-              name="product_name"
-              value={form.product_name || ""}
-              onChange={handleChange}
-              placeholder="Product Name"
-              className="p-2 border rounded-md text-gray-700 shadow-md bg-white"
-              required
-            />
-          </div>
-
-          {/* Category */}
-          <div className="flex flex-col gap-1 mb-2">
-            <label className="text-sm text-gray-600">Category</label>
-            <select
-              name="category_id"
-              value={form.category_id || ""}
-              onChange={handleChange}
-              className="p-2 border rounded-md text-gray-700 shadow-md bg-white"
-              required
-            >
-              <option value="">Select Category</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Image */}
-          <div className="flex flex-col gap-1 mb-2 col-span-2">
-            <label className="text-sm text-gray-600">
-              Upload Image <span className="text-red-700 font-bold">*</span>
-            </label>
-            <input
-              type="file"
-              name="image"
-              accept="image/*"
-              onChange={handleChange}
-              className="p-2 border rounded-md text-gray-700 shadow-md bg-white"
-            />
-
-            {imagePreview && (
-              <img
-                src={imagePreview}
-                className="h-32 w-32 mt-2 rounded-xl border shadow"
-              />
-            )}
-          </div>
-
-          {/* VARIANTS */}
-          <div className="w-full border col-span-2 border-gray-300 rounded-md p-3 grid grid-cols-3 gap-3">
-
-            <button
-              className="p-3 bg-white rounded-md text-gray-700 col-span-3 shadow"
-              onClick={addVariant}
-            >
-              Add Variant
-            </button>
-
-            {/* Variant Inputs */}
-            {variants.map((v, index) => (
-              <div key={index} className="grid grid-cols-3 col-span-3 gap-3 border-b pb-3">
-
-                <div className="flex flex-col">
-                  <label className="text-sm text-gray-600">Name</label>
-                  <input
-                    type="text"
-                    value={v.name}
-                    onChange={(e) =>
-                      handleVariantChange(index, "name", e.target.value)
-                    }
-                    className="p-2 border rounded-md shadow bg-white"
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-sm text-gray-600">Price</label>
-                  <input
-                    type="number"
-                    value={v.price}
-                    onChange={(e) =>
-                      handleVariantChange(index, "price", e.target.value)
-                    }
-                    className="p-2 border rounded-md shadow bg-white"
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-sm text-gray-600">Qty</label>
-                  <input
-                    type="number"
-                    value={v.qty}
-                    onChange={(e) =>
-                      handleVariantChange(index, "qty", e.target.value)
-                    }
-                    className="p-2 border rounded-md shadow bg-white"
-                  />
-                </div>
-
-              </div>
-            ))}
-
-          </div>
-
-          {/* SUBMIT BUTTON */}
-          <div className="col-span-2 mt-3 flex gap-3">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white py-2 flex-1 rounded-xl shadow hover:bg-blue-700"
-            >
-              {isEditing ? "Update Product" : "Add Product"}
-            </button>
-
-            {isEditing && (
-              <button
-                type="button"
-                className="bg-red-600 text-white py-2 flex-1 rounded-xl shadow hover:bg-red-700"
-                onClick={() => onDelete(form.id)}
-              >
-                Delete
-              </button>
-            )}
-          </div>
-        </form>
+    <div className="p-6 bg-white w-full rounded-md shadow-sm">
+      <div className="flex justify-between p-3">
+        <h1 className="uppercase text-lg font-medium items-center">
+          Register Product
+        </h1>
       </div>
-    </>
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2">
+        {/* Product Name */}
+        <div className="flex flex-col gap-1 mb-2">
+          <label className="text-sm text-gray-600">Product Name</label>
+          <input
+            type="text"
+            name="product_name"
+            value={form.product_name}
+            onChange={handleChange}
+            className="p-2 border rounded-md shadow bg-white"
+            required
+          />
+        </div>
+
+        {/* Product Description */}
+        <div className="flex flex-col gap-1 mb-2 col-span-2">
+          <label className="text-sm text-gray-600">Product Description</label>
+          <textarea
+            name="product_description"
+            value={form.product_description}
+            onChange={handleChange}
+            className="p-2 border rounded-md shadow bg-white"
+            rows={3}
+          />
+        </div>
+
+        {/* Category */}
+        <div className="flex flex-col gap-1 mb-2">
+          <label className="text-sm text-gray-600">Category</label>
+          <select
+            name="category_id"
+            value={form.category_id}
+            onChange={handleChange}
+            className="p-2 border rounded-md shadow bg-white"
+            required
+          >
+            <option value="">Select Category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Image */}
+        <div className="flex flex-col gap-1 mb-2 col-span-2">
+          <label className="text-sm text-gray-600">Upload Image</label>
+          <input
+            type="file"
+            name="image"
+            accept="image/*"
+            onChange={handleChange}
+          />
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              className="h-32 w-32 mt-2 rounded-xl border shadow"
+            />
+          )}
+        </div>
+
+        {/* Variants */}
+        <div className="col-span-2 border p-3 rounded-md border-gray-300 grid gap-3">
+          <button
+            onClick={addVariant}
+            className="p-2 bg-gray-100 rounded shadow col-span-2"
+          >
+            Add Variant
+          </button>
+
+          {variants.map((v, index) => (
+            <div key={index} className="border-b pb-3">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Variant Name"
+                  value={v.variant_name}
+                  onChange={(e) =>
+                    handleVariantChange(index, "variant_name", e.target.value)
+                  }
+                  className="p-2 border rounded-md"
+                  required
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={v.price}
+                  onChange={(e) =>
+                    handleVariantChange(index, "price", Number(e.target.value))
+                  }
+                  className="p-2 border rounded-md"
+                  required
+                />
+              </div>
+
+              {/* Ingredients checkboxes */}
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {ingredients.map((ing) => {
+                  const selected = v.ingredients?.find(
+                    (i) => i.ingredient_id === ing.id
+                  );
+                  return (
+                    <div key={ing.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!selected}
+                        onChange={(e) =>
+                          handleIngredientChange(
+                            index,
+                            ing.id,
+                            selected?.amount || 0,
+                            e.target.checked
+                          )
+                        }
+                      />
+                      <span>
+                        {ing.ingredient_name} ({ing.unit})
+                      </span>
+                      {selected && (
+                        <input
+                          type="number"
+                          value={selected.amount}
+                          onChange={(e) =>
+                            handleIngredientChange(
+                              index,
+                              ing.id,
+                              Number(e.target.value),
+                              true
+                            )
+                          }
+                          className="w-16 p-1 border rounded"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Submit */}
+        <div className="col-span-2 mt-3 flex gap-3">
+          <button
+            type="submit"
+            className="bg-blue-600 text-white py-2 flex-1 rounded-xl shadow hover:bg-blue-700"
+          >
+            {isEditing ? "Update Product" : "Add Product"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
