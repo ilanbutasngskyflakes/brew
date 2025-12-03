@@ -672,7 +672,7 @@
 import { useEffect, useState } from "react";
 import ProductForm from "./productForm";
 import api from "../../../api/api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function ProductDashboard() {
   const [products, setProducts] = useState([]);
@@ -760,12 +760,13 @@ export default function ProductDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Products</h1>
-        <button
-          onClick={handleAdd}
+        <Link
+          // onClick={handleAdd}
+          to="/dashboard/product/new"
           className="bg-blue-600 text-white px-5 py-2 rounded-xl shadow hover:bg-blue-700 transition"
         >
           Add Product
-        </button>
+        </Link>
       </div>
 
       {/* Category Filter Dropdown */}

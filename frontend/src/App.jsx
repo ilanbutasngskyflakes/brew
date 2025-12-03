@@ -9,6 +9,8 @@ import ProductDashboard from "./pages/adminDashboard/Product/productPage";
 import ProductDetails from "./pages/adminDashboard/Product/productDetails";
 import OrderHistory from "./pages/cashierDashboard/orderHistory";
 import Settings from "./pages/adminDashboard/Settings/userProfile"; 
+import Inventory from "./pages/adminDashboard/Equipment/equipmentPage"
+import CreateProductDashboard from "./pages/adminDashboard/Product/Partials/Create";
 
 function App() {
   return (
@@ -23,8 +25,10 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />}>
           <Route path="product" element={<ProductsPage />} />
           <Route path="product" element={<ProductDashboard />} />
+          <Route path="product/new" element={<CreateProductDashboard />} />
           <Route path="product/:id" element={<ProductDetails />} />
           <Route path="settings" element={<Settings/>} />
+          <Route path="inventory" element={<Inventory/>}/>
         </Route>
 
         {/* Cashier */}

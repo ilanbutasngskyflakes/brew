@@ -45,6 +45,9 @@ app.use("/uploads", express.static("uploads"));
 const variantRoutes = require('./routes/variantRoutes');
 app.use("/variants", variantRoutes);
 
+const equipmentRoutes = require ('./routes/equipmentRoutes')
+app.use("/equipment", equipmentRoutes);
+
 
 
 // Start server
