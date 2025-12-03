@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { name: "Home", path: "/dashboard", icon: <Home size={20} /> },     // 👈 NEW
     { name: "Products", path: "/dashboard/product", icon: <Box size={20} /> },
     { name: "Inventory", path: "/dashboard/inventory", icon: <Archive size={20} /> },
+    { name: "Ingredients", path: "/dashboard/ingredients", icon: <Archive size={20} /> },
     { name: "Reports", path: "/dashboard/reports", icon: <FileText size={20} /> },
     { name: "Settings", path: "/dashboard/settings", icon: <Settings size={20} /> },
   ];

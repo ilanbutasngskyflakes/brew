@@ -12,6 +12,11 @@ import Settings from "./pages/adminDashboard/Settings/userProfile";
 import Inventory from "./pages/adminDashboard/Equipment/equipmentPage"
 import CreateProductDashboard from "./pages/adminDashboard/Product/Partials/Create";
 
+import IngredientsDashboard from "./pages/adminDashboard/Ingredients/ingredientPage";
+import CreateIngredientsDashboard from "./pages/adminDashboard/Ingredients/Partials/Create";
+import UpdateIngredientsDashboard from "./pages/adminDashboard/Ingredients/Partials/Update";
+
+
 function App() {
   return (
     <BrowserRouter>
@@ -29,6 +34,11 @@ function App() {
           <Route path="product/:id" element={<ProductDetails />} />
           <Route path="settings" element={<Settings/>} />
           <Route path="inventory" element={<Inventory/>}/>
+
+          <Route path="ingredients" element={<IngredientsDashboard/>}/>
+          <Route path="ingredients/new" element={<CreateIngredientsDashboard/>}/>
+          <Route path="ingredients/:id/edit" element={<UpdateIngredientsDashboard/>}/>
+          
         </Route>
 
         {/* Cashier */}
