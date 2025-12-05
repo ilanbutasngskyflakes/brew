@@ -11,7 +11,7 @@ export default function Create({ formData = {}, isEditing }) {
   const [imagePreview, setImagePreview] = useState("");
   const [categories, setCategories] = useState([]);
   const [variants, setVariants] = useState([
-    { variant_name: "", price: 0, ingredients: [] },
+    { variant_name: "", price: "", ingredients: [] },
   ]);
   const [ingredients, setIngredients] = useState([]);
 
