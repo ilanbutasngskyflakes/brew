@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SignUp from './pages/authPage/signup';
 import Login from './pages/authPage/LogIn';
@@ -44,7 +43,8 @@ function App() {
 
         {/* Cashier */}
         <Route path="/cashier" element={<Cashier />} />
-        <Route path="/cashier/order" element={<OrderHistory />} />
+        <Route path="/cashier/order/" element={<OrderHistory />} />
+        <Route path="/cashier/order/update" element={<OrderHistory />} />
 
       </Routes>
     </BrowserRouter>

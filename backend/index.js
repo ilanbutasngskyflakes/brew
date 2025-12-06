@@ -51,6 +51,8 @@ app.use("/variants", variantRoutes);
 const equipmentRoutes = require ('./routes/equipmentRoutes')
 app.use("/equipment", equipmentRoutes);
 
+const addonsRoutes = require ('./routes/addonsRoutes')
+app.use("/addons", addonsRoutes);
 
 
 // Start server

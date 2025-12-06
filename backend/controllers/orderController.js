@@ -375,6 +375,86 @@ const getOrders = async (req, res) => {
   }
 };
 
+// UPDATE ORDER
+const updateOrder = async (req, res) => {
+  const { id } = req.params;
+  const { items, total, discount_type, discount, paid, change } = req.body;
+
+  if (!id || !items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "Missing required fields: order id and items" });
+  }
+
+  let conn;
+  try {
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+
+    // Get old items to restore stock
+    const [oldItems] = await conn.execute(
+      "SELECT variant_id, quantity FROM tbl_orders_details WHERE order_id = ?",
+      [id]
+    );
+
+    // Restore old stock
+    for (const oldItem of oldItems) {
+      await conn.execute(
+        "UPDATE tbl_product_variants SET quantity = quantity + ? WHERE id = ?",
+        [oldItem.quantity, oldItem.variant_id]
+      );
+    }
+
+    // Update order
+    await conn.execute(
+      "UPDATE tbl_orders SET total = ?, discount_type = ?, discount = ?, paid = ?, `change` = ? WHERE id = ?",
+      [
+        Number(total),
+        discount_type || null,
+        discount ? Number(discount) : 0,
+        paid ? Number(paid) : Number(total),
+        change ? Number(change) : 0,
+        id
+      ]
+    );
+
+    // Delete old order details
+    await conn.execute("DELETE FROM tbl_orders_details WHERE order_id = ?", [id]);
+
+    // Insert new order details and deduct stock
+    for (const item of items) {
+      const { product_id, variant_id, topping_id, quantity, price } = item;
+
+      if (!product_id || !variant_id || quantity === undefined || price === undefined) {
+        await conn.rollback();
+        return res.status(400).json({ 
+          message: "Each item must include product_id, variant_id, quantity, and price" 
+        });
+      }
+
+      const subtotal = Number(price) * Number(quantity);
+
+      await conn.execute(
+        "INSERT INTO tbl_orders_details (order_id, variant_id, quantity, topping_id, subtotal) VALUES (?, ?, ?, ?, ?)",
+        [id, variant_id, Number(quantity), topping_id || null, subtotal]
+      );
+
+      // Deduct new stock
+      await conn.execute(
+        "UPDATE tbl_product_variants SET quantity = quantity - ? WHERE id = ?",
+        [Number(quantity), variant_id]
+      );
+    }
+
+    await conn.commit();
+    res.json({ message: "Order updated successfully", order_id: id });
+  } catch (error) {
+    console.error("Update order error:", error);
+    if (conn) await conn.rollback();
+    res.status(500).json({ message: "Cannot update order", error: error.message });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
 // UPDATE ORDER STATUS
 const updateOrderStatus = async (req, res) => {
   const { id } = req.params;
@@ -394,5 +474,6 @@ const updateOrderStatus = async (req, res) => {
 module.exports = {
   createOrder,
   getOrders,
+  updateOrder,
   updateOrderStatus,
 };
