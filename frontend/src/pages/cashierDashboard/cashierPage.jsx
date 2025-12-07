@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/immutability */
 /* eslint-disable react-hooks/purity */
 import { useEffect, useState } from "react";
@@ -36,18 +38,37 @@ export default function CashierPage() {
       return;
     }
     
-    const cartItems = order.items.map((item, index) => ({
-      id: `edit-${order.id}-${index}`,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      variant_id: item.variant_id,
-      variant_name: item.variant_name,
-      price: Number(item.price || 0),
-      quantity: item.quantity,
-      topping_id: item.topping_id || null,
-      isMilkTea: item.topping_id !== null,
-      maxStock: 999
-    }));
+    const cartItems = order.items.map((item, index) => {
+      // Find the product that has this variant
+      let product = null;
+      let variant = null;
+      
+      for (const p of products) {
+        const foundVariant = p.variants?.find(v => v.id === item.variant_id);
+        if (foundVariant) {
+          product = p;
+          variant = foundVariant;
+          break;
+        }
+      }
+      
+      // Use current variant price, fallback to 0 if not found
+      const currentPrice = variant ? Number(variant.price) : 0;
+      
+      return {
+        id: `edit-${order.id}-${index}`,
+        product_id: product?.id || item.product_id,
+        product_name: item.product_name,
+        variant_id: item.variant_id,
+        variant_name: item.variant_name,
+        price: currentPrice,
+        quantity: item.quantity,
+        topping_id: item.topping_id || null,
+        isMilkTea: item.topping_id !== null,
+        maxStock: 9999,
+        isEditMode: true
+      };
+    });
     
     setCart(cartItems);
     setDiscountType(order.discount_type || "none");
@@ -64,10 +85,10 @@ export default function CashierPage() {
   }, []);
 
   useEffect(() => {
-    if (location.state?.editOrder) {
+    if (location.state?.editOrder && toppings.length > 0 && products.length > 0) {
       loadOrderForEdit(location.state.editOrder);
     }
-  }, [location.state]);
+  }, [location.state, toppings, products]);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -141,7 +162,7 @@ export default function CashierPage() {
   const handleProductClick = (product) => {
     if (product.variants && product.variants.length > 0) {
       const hasStock = product.variants.some(v => v.quantity > 0);
-      if (!hasStock) {
+      if (!hasStock && !editingOrderId) {
         alert(`${product.product_name} is out of stock!`);
         return;
       }
@@ -156,15 +177,16 @@ export default function CashierPage() {
   };
 
   const addToCart = (product, variant) => {
-    if (!variant.quantity || variant.quantity === 0) {
+    if (!editingOrderId && (!variant.quantity || variant.quantity === 0)) {
       alert(`${product.product_name} - ${variant.name} is out of stock!`);
       return;
     }
 
-    const existingInCart = cart.filter(item => item.variant_id === variant.id)
+    const existingInCart = cart
+      .filter(item => item.variant_id === variant.id && !item.isEditMode)
       .reduce((sum, item) => sum + item.quantity, 0);
     
-    if (existingInCart >= variant.quantity) {
+    if (!editingOrderId && existingInCart >= variant.quantity) {
       alert(`Cannot add more! Only ${variant.quantity} in stock.`);
       return;
     }
@@ -184,7 +206,8 @@ export default function CashierPage() {
       category_id: product.category_id,
       isMilkTea: isMilkTea,
       topping_id: null,
-      maxStock: variant.quantity
+      maxStock: editingOrderId ? 9999 : variant.quantity,
+      isEditMode: false
     };
     
     setCart([...cart, cartItem]);
@@ -197,13 +220,15 @@ export default function CashierPage() {
       if (item.id === itemId) {
         const newQty = Math.max(1, item.quantity + change);
         
-        const totalForVariant = cart
-          .filter(i => i.variant_id === item.variant_id)
-          .reduce((sum, i) => sum + (i.id === itemId ? newQty : i.quantity), 0);
-        
-        if (item.maxStock && totalForVariant > item.maxStock) {
-          alert(`Cannot add more! Only ${item.maxStock} in stock.`);
-          return item;
+        if (!item.isEditMode) {
+          const totalForVariant = cart
+            .filter(i => i.variant_id === item.variant_id && !i.isEditMode)
+            .reduce((sum, i) => sum + (i.id === itemId ? newQty : i.quantity), 0);
+          
+          if (item.maxStock && totalForVariant > item.maxStock) {
+            alert(`Cannot add more! Only ${item.maxStock} in stock.`);
+            return item;
+          }
         }
         
         return { ...item, quantity: newQty };
@@ -302,6 +327,8 @@ export default function CashierPage() {
         cashier_id: cashier_id,
         order_type: orderType,
         status: "completed",
+        discount_type: discountType,
+        discount: calculateDiscount(),
         total: parseFloat(total.toFixed(2)),
         items: cart.map(item => {
           const toppingPrice = item.topping_id ? Number(getToppingById(item.topping_id)?.price || 0) : 0;
@@ -460,10 +487,10 @@ export default function CashierPage() {
   }));
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-slate-50">
+    <div className="flex flex-col lg:flex-row h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar - Categories */}
-      <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 overflow-y-auto flex flex-col">
-        <div className="p-4 bg-[#073dbe] sticky top-0 z-10">
+      <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col overflow-hidden">
+        <div className="p-4 bg-[#073dbe]">
           <h2 className="text-lg font-bold text-white mb-1">Categories</h2>
           <p className="text-blue-100 text-xs">Browse menu</p>
           {editingOrderId && (
@@ -473,7 +500,7 @@ export default function CashierPage() {
           )}
         </div>
         
-        <div className="flex-1 p-3 space-y-2">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
           <button
             onClick={() => setSelectedCategory("all")}
             className={`w-full text-left px-3 py-2 rounded-lg transition-all font-medium text-sm ${
@@ -517,7 +544,7 @@ export default function CashierPage() {
           })}
         </div>
         
-        <div className="sticky bottom-0 p-3 bg-white border-t border-slate-200">
+        <div className="p-3 bg-white border-t border-slate-200">
           <button
             onClick={() => handleNavigateWithConfirm("/dashboard")}
             className="w-full bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
@@ -529,8 +556,8 @@ export default function CashierPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-200 z-10">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="bg-white border-b border-slate-200">
           <div className="p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
               <div>
@@ -558,7 +585,7 @@ export default function CashierPage() {
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="flex-1 overflow-y-auto p-4">
           {filteredProducts.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -650,7 +677,7 @@ export default function CashierPage() {
       {/* Variant Selection Modal */}
       {showVariantModal && selectedProduct && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full p-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">{selectedProduct.product_name}</h3>
@@ -667,7 +694,7 @@ export default function CashierPage() {
               </button>
             </div>
             
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2">
               {selectedProduct.variants?.map(variant => (
                 <button
                   key={variant.id}
@@ -698,8 +725,8 @@ export default function CashierPage() {
       )}
 
       {/* Cart Sidebar */}
-      <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 overflow-y-auto">
-        <div className="p-4 bg-[#073dbe] sticky top-0 z-10">
+      <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col overflow-hidden">
+        <div className="p-4 bg-[#073dbe]">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -716,7 +743,7 @@ export default function CashierPage() {
           </div>
         </div>
         
-        <div className="p-3">
+        <div className="flex-1 overflow-y-auto p-3">
           {cart.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
               <FiShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -725,7 +752,7 @@ export default function CashierPage() {
             </div>
           ) : (
             <>
-              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+              <div className="space-y-3 mb-4">
                 {cart.map(item => {
                   const selectedTopping = item.topping_id ? getToppingById(item.topping_id) : null;
                   return (
