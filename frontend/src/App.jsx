@@ -13,7 +13,8 @@ import Home from "./pages/adminDashboard/home";
 import IngredientsDashboard from "./pages/adminDashboard/Ingredients/ingredientPage";
 import CreateIngredientsDashboard from "./pages/adminDashboard/Ingredients/Partials/Create";
 import UpdateIngredientsDashboard from "./pages/adminDashboard/Ingredients/Partials/Update";
-
+import ProductEdit from "./pages/adminDashboard/Product/Edit";
+import Report from "./pages/adminDashboard/Report/salesReport";
 
 function App() {
   return (
@@ -30,13 +31,14 @@ function App() {
           <Route path="product" element={<ProductsPage />} />
           <Route path="product/new" element={<CreateProductDashboard />} />
           <Route path="product/:id" element={<ProductDetails />} />
-          <Route path="settings" element={<Settings/>} />
+          <Route path="/dashboard/product/edit/:id" element={<ProductEdit />} />
+          <Route path="reports" element={<Report/>} />
           <Route path="inventory" element={<Inventory/>}/>
-
+          <Route path="settings" element={<Settings />} />
           <Route path="ingredients" element={<IngredientsDashboard/>}/>
           <Route path="ingredients/new" element={<CreateIngredientsDashboard/>}/>
           <Route path="ingredients/:id/edit" element={<UpdateIngredientsDashboard/>}/>
-          
+         
         </Route>
 
         

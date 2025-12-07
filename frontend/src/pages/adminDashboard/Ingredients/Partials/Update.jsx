@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../../../api/api";
+import { FiPackage, FiX, FiTrash2 } from "react-icons/fi";
 
 export default function Update() {
   const { id } = useParams();
@@ -43,8 +44,8 @@ export default function Update() {
     e.preventDefault();
 
     try {
-      await api.put(`/ingredients/${id}`, formData); 
-      alert("Ingredient updated!");
+      await api.put(`/ingredients/${id}`, formData);
+      alert("Ingredient updated successfully! ✅");
       navigate("/dashboard/ingredients");
     } catch (error) {
       console.error(error);
@@ -52,66 +53,133 @@ export default function Update() {
     }
   };
 
-  if (loading) return <p className="p-4 text-gray-500">Loading ingredient...</p>;
+  const handleDelete = async () => {
+    if (!confirm("⚠️ Are you sure you want to delete this ingredient? This action cannot be undone.")) return;
+
+    try {
+      await api.delete(`/ingredients/${id}`);
+      alert("Ingredient deleted successfully! 🗑️");
+      navigate("/dashboard/ingredients");
+    } catch (error) {
+      console.error(error);
+      alert("Error deleting ingredient");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading ingredient...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 bg-white w-full rounded-md shadow-sm">
-      <div className="flex justify-between p-3">
-        <h1 className="uppercase text-lg font-medium items-center">
-          Update Ingredient
-        </h1>
+    <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="bg-indigo-600 p-3 rounded-xl shadow-lg">
+                  <FiPackage className="text-white text-2xl" />
+                </div>
+                Update Ingredient
+              </h1>
+              <p className="text-gray-600 mt-2 ml-1">
+                Modify ingredient details
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/dashboard/ingredients")}
+              className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              <FiX size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-white rounded-xl shadow-lg p-6 lg:p-8 border-2 border-gray-100">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Ingredient Name */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-2">
+                Ingredient Name <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                name="ingredient_name"
+                value={formData.ingredient_name}
+                onChange={handleChange}
+                placeholder="e.g., Espresso Beans, Milk, Sugar"
+                className="p-3 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                required
+              />
+            </div>
+
+            {/* Quantity & Unit */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-gray-700 mb-2">
+                  Quantity <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  placeholder="e.g., 1000"
+                  step="0.01"
+                  min="0"
+                  className="p-3 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-sm font-semibold text-gray-700 mb-2">
+                  Unit <span className="text-red-600">*</span>
+                </label>
+                <select
+                  name="unit"
+                  value={formData.unit}
+                  onChange={handleChange}
+                  className="p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none cursor-pointer"
+                >
+                  <option value="ml">ml (milliliters)</option>
+                  <option value="g">g (grams)</option>
+                  <option value="kg">kg (kilograms)</option>
+                  <option value="L">L (liters)</option>
+                  <option value="pcs">pcs (pieces)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <button
+                type="submit"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold"
+              >
+                Update Ingredient
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2"
+              >
+                <FiTrash2 size={18} />
+                Delete Ingredient
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-
-      <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-2">
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Ingredient Name</label>
-          <input
-            type="text"
-            name="ingredient_name"
-            value={formData.ingredient_name}
-            onChange={handleChange}
-            placeholder="Enter ingredient"
-            className="p-2 border rounded-md text-gray-700 bg-white focus:ring-2 focus:ring-blue-300"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Quantity</label>
-          <input
-            type="number"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleChange}
-            placeholder="Enter Quantity"
-            className="p-2 border rounded-md text-gray-700 bg-white focus:ring-2 focus:ring-blue-300"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Unit</label>
-          <select
-            name="unit"
-            value={formData.unit}
-            onChange={handleChange}
-            className="p-2 border rounded-md bg-white text-gray-700 focus:ring-2 focus:ring-blue-300"
-          >
-            <option value="ml">ml (milliliters)</option>
-            <option value="g">g (grams)</option>
-          </select>
-        </div>
-
-        {/* Buttons */}
-        <div className="col-span-3 mt-3 flex gap-3">
-          <button
-            type="submit"
-            className="bg-blue-600 text-white py-2 flex-1 rounded-xl shadow hover:bg-blue-700"
-          >
-            Update Ingredient
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

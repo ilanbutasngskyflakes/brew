@@ -22,9 +22,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 p-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">
-            Welcome, {user?.first_name}
-          </h1>
+          
         </div>
 
         {/* Nested routes */}

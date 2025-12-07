@@ -4,10 +4,10 @@ const userController = require("../controllers/userController");
 
 router.get("/", userController.getUsers);
 router.get("/:id", userController.getUser);
-router.post("/add", userController.addUser);
+router.post("/", userController.addUser);
 router.post("/auth", userController.verifyUser);
-router.patch("/update/:id", userController.updateUser);
-router.patch("/:id/change-password", userController.changePassword);
-router.delete("/delete/:id", userController.deleteUser);
+router.put("/:id", userController.updateUser); // Changed to PUT and simplified path
+router.put("/change-password/:id", userController.changePassword); // Changed to PUT
+router.delete("/:id", userController.deleteUser); // Simplified path
 
 module.exports = router;
