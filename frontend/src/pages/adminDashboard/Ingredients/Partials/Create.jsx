@@ -1,7 +1,7 @@
 import { useState } from "react";
 import api from "../../../../api/api";
 import { useNavigate } from "react-router-dom";
-import { FiPackage, FiX } from "react-icons/fi";
+import { FiPackage, FiX, FiPlus } from "react-icons/fi";
 
 export default function Create() {
   const navigate = useNavigate();
@@ -11,17 +11,21 @@ export default function Create() {
     quantity: "",
     unit: "ml",
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      setSubmitting(true);
       await api.post("/ingredients/add", formData);
-      alert("Ingredient added successfully! ✅");
+      alert("Ingredient added successfully");
       navigate("/dashboard/ingredients");
     } catch (error) {
       console.error(error);
       alert("Error adding ingredient");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -34,37 +38,38 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="bg-indigo-600 p-3 rounded-xl shadow-lg">
-                  <FiPackage className="text-white text-2xl" />
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-3">
+                <div className="bg-[#073dbe] p-2.5 rounded-lg">
+                  <FiPackage className="text-white text-xl" />
                 </div>
                 Add New Ingredient
               </h1>
-              <p className="text-gray-600 mt-2 ml-1">
+              <p className="text-slate-600 mt-1 text-sm">
                 Add a new ingredient to your inventory
               </p>
             </div>
             <button
               onClick={() => navigate("/dashboard/ingredients")}
-              className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-lg transition-all"
+              className="text-slate-600 hover:text-slate-800 p-2 hover:bg-slate-100 rounded-lg transition-all"
+              disabled={submitting}
             >
-              <FiX size={24} />
+              <FiX size={20} />
             </button>
           </div>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-xl shadow-lg p-6 lg:p-8 border-2 border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Ingredient Name */}
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-gray-700 mb-2">
+              <label className="text-sm font-medium text-slate-700 mb-2">
                 Ingredient Name <span className="text-red-600">*</span>
               </label>
               <input
@@ -73,15 +78,16 @@ export default function Create() {
                 value={formData.ingredient_name}
                 onChange={handleChange}
                 placeholder="e.g., Espresso Beans, Milk, Sugar"
-                className="p-3 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
                 required
+                disabled={submitting}
               />
             </div>
 
             {/* Quantity & Unit */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-gray-700 mb-2">
+                <label className="text-sm font-medium text-slate-700 mb-2">
                   Quantity <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -89,51 +95,68 @@ export default function Create() {
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
                   placeholder="e.g., 1000"
                   step="0.01"
                   min="0"
-                  className="p-3 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                  className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
                   required
+                  disabled={submitting}
                 />
               </div>
 
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-gray-700 mb-2">
+                <label className="text-sm font-medium text-slate-700 mb-2">
                   Unit <span className="text-red-600">*</span>
                 </label>
                 <select
                   name="unit"
                   value={formData.unit}
                   onChange={handleChange}
-                  className="p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none cursor-pointer"
+                  className="p-2.5 border border-slate-300 rounded-lg bg-white text-slate-900 focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none cursor-pointer"
+                  disabled={submitting}
                 >
                   <option value="ml">ml (milliliters)</option>
                   <option value="g">g (grams)</option>
-                  
+                  <option value="kg">kg (kilograms)</option>
+                  <option value="L">L (liters)</option>
+                  <option value="pcs">pcs (pieces)</option>
                 </select>
               </div>
             </div>
 
             {/* Info Box */}
-            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4">
-              <p className="text-sm text-indigo-700">
-                <span className="font-semibold">💡 Tip:</span> Make sure to use
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-slate-700">
+                <span className="font-semibold text-[#073dbe]">Tip:</span> Use
                 consistent units across all ingredients for accurate tracking.
               </p>
             </div>
 
             {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
               <button
                 type="submit"
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold"
+                className="flex-1 bg-[#073dbe] hover:bg-[#052d99] text-white py-2.5 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={submitting}
               >
-                Add Ingredient
+                {submitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <FiPlus size={16} />
+                    Add Ingredient
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/dashboard/ingredients")}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold"
+                className="flex-1 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-2.5 rounded-lg transition-all font-medium disabled:opacity-50"
+                disabled={submitting}
               >
                 Cancel
               </button>
@@ -141,6 +164,17 @@ export default function Create() {
           </form>
         </div>
       </div>
+
+      <style jsx>{`
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
     </div>
   );
 }

@@ -7,15 +7,14 @@ import {
   FiTrash2, 
   FiPlus, 
   FiAlertCircle,
-  FiSearch,
-  FiFilter
+  FiSearch
 } from "react-icons/fi";
 
 export default function IngredientPage() {
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStock, setFilterStock] = useState("all"); // all, low, normal
+  const [filterStock, setFilterStock] = useState("all");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,11 +35,11 @@ export default function IngredientPage() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`⚠️ Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
 
     try {
       await api.delete(`/ingredients/${id}`);
-      alert("Ingredient deleted successfully! 🗑️");
+      alert("Ingredient deleted successfully");
       fetchIngredients();
     } catch (error) {
       console.error("Error deleting ingredient:", error);
@@ -54,7 +53,7 @@ export default function IngredientPage() {
     )
     .filter((item) => {
       if (filterStock === "low") {
-        return Number(item.quantity) < 100; // Adjust threshold as needed
+        return Number(item.quantity) < 100;
       } else if (filterStock === "normal") {
         return Number(item.quantity) >= 100;
       }
@@ -65,130 +64,127 @@ export default function IngredientPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading ingredients...</p>
+          <div className="w-16 h-16 border-4 border-[#073dbe] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-medium">Loading ingredients...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="bg-indigo-600 p-3 rounded-xl shadow-lg">
-                  <FiPackage className="text-white text-2xl" />
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-3">
+                <div className="bg-[#073dbe] p-2.5 rounded-lg">
+                  <FiPackage className="text-white text-xl" />
                 </div>
                 Ingredient Management
               </h1>
-              <p className="text-gray-600 mt-2 ml-1">
+              <p className="text-slate-600 mt-1 text-sm">
                 Track and manage your inventory
               </p>
             </div>
             <Link
               to="/dashboard/ingredients/new"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center gap-2"
+              className="w-full lg:w-auto bg-[#073dbe] hover:bg-[#052d99] text-white px-5 py-2.5 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
             >
-              <FiPlus className="text-xl" />
+              <FiPlus size={18} />
               Add Ingredient
             </Link>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <FiPackage className="text-indigo-600 text-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-blue-50 p-2.5 rounded-lg">
+                <FiPackage className="text-[#073dbe]" size={20} />
               </div>
             </div>
-            <div className="text-3xl font-bold text-gray-800">{ingredients.length}</div>
-            <div className="text-sm text-gray-600 font-medium">Total Ingredients</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Ingredients</div>
+            <div className="text-2xl font-bold text-slate-900">{ingredients.length}</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <FiPackage className="text-green-600 text-xl" />
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-green-50 p-2.5 rounded-lg">
+                <FiPackage className="text-green-600" size={20} />
               </div>
             </div>
-            <div className="text-3xl font-bold text-gray-800">
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Normal Stock</div>
+            <div className="text-2xl font-bold text-slate-900">
               {ingredients.filter(i => Number(i.quantity) >= 100).length}
             </div>
-            <div className="text-sm text-gray-600 font-medium">Normal Stock</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="bg-red-100 p-3 rounded-lg">
-                <FiAlertCircle className="text-red-600 text-xl" />
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-red-50 p-2.5 rounded-lg">
+                <FiAlertCircle className="text-red-600" size={20} />
               </div>
             </div>
-            <div className="text-3xl font-bold text-gray-800">{lowStockCount}</div>
-            <div className="text-sm text-gray-600 font-medium">Low Stock Alert</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Low Stock Alert</div>
+            <div className="text-2xl font-bold text-slate-900">{lowStockCount}</div>
           </div>
         </div>
 
         {/* Search and Filter */}
-        <div className="bg-white rounded-xl shadow-lg p-4 mb-6 border-2 border-gray-100">
-          <div className="flex flex-col lg:flex-row gap-4">
+        <div className="bg-white rounded-lg border border-slate-200 p-3 mb-4">
+          <div className="flex flex-col lg:flex-row gap-3">
             {/* Search */}
             <div className="flex-1 relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type="text"
                 placeholder="Search ingredients..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
               />
             </div>
 
             {/* Filter */}
             <div className="lg:w-48">
-              <div className="relative">
-                <FiFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-                <select
-                  value={filterStock}
-                  onChange={(e) => setFilterStock(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none cursor-pointer text-sm bg-white"
-                >
-                  <option value="all">All Stock</option>
-                  <option value="low">Low Stock</option>
-                  <option value="normal">Normal Stock</option>
-                </select>
-              </div>
+              <select
+                value={filterStock}
+                onChange={(e) => setFilterStock(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none cursor-pointer text-sm bg-white"
+              >
+                <option value="all">All Stock</option>
+                <option value="low">Low Stock</option>
+                <option value="normal">Normal Stock</option>
+              </select>
             </div>
           </div>
 
           {/* Results Count */}
-          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-            <span className="font-semibold text-indigo-600">{filteredIngredients.length}</span>
-            {filteredIngredients.length === 1 ? 'ingredient' : 'ingredients'} found
+          <div className="mt-3 text-sm text-slate-600">
+            <span className="font-semibold text-[#073dbe]">{filteredIngredients.length}</span>
+            {' '}{filteredIngredients.length === 1 ? 'ingredient' : 'ingredients'} found
           </div>
         </div>
 
         {/* Low Stock Alert */}
         {lowStockCount > 0 && filterStock !== "low" && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <div className="flex items-center gap-3">
-              <FiAlertCircle className="text-red-600 text-2xl flex-shrink-0" />
+              <FiAlertCircle className="text-red-600 text-xl flex-shrink-0" />
               <div className="flex-1">
-                <h4 className="font-bold text-red-800 mb-1">⚠️ Low Stock Alert</h4>
+                <h4 className="font-bold text-red-800 mb-1 text-sm">Low Stock Alert</h4>
                 <p className="text-sm text-red-700">
                   {lowStockCount} ingredient{lowStockCount !== 1 ? 's' : ''} need{lowStockCount === 1 ? 's' : ''} to be restocked
                 </p>
               </div>
               <button
                 onClick={() => setFilterStock("low")}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
               >
                 View Items
               </button>
@@ -198,98 +194,100 @@ export default function IngredientPage() {
 
         {/* Table */}
         {filteredIngredients.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-lg p-12 text-center border-2 border-gray-100">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">No Ingredients Found</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
+            <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FiPackage className="text-slate-400 text-2xl" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">No Ingredients Found</h3>
+            <p className="text-slate-600 text-sm mb-6">
               {searchQuery ? "Try adjusting your search" : "Start by adding your first ingredient"}
             </p>
             <Link
               to="/dashboard/ingredients/new"
-              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold"
+              className="inline-flex items-center gap-2 bg-[#073dbe] hover:bg-[#052d99] text-white px-5 py-2.5 rounded-lg transition-all font-medium text-sm"
             >
-              <FiPlus />
+              <FiPlus size={16} />
               Add Ingredient
             </Link>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="text-left px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-600 uppercase">
                       Ingredient Name
                     </th>
-                    <th className="text-left px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-600 uppercase">
                       Quantity
                     </th>
-                    <th className="text-left px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-600 uppercase">
                       Unit
                     </th>
-                    <th className="text-left px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 text-xs font-bold text-slate-600 uppercase">
                       Status
                     </th>
-                    <th className="text-center px-6 py-4 text-sm font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="text-center px-4 py-3 text-xs font-bold text-slate-600 uppercase">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {filteredIngredients.map((item) => {
                     const isLowStock = Number(item.quantity) < 100;
                     
                     return (
                       <tr
                         key={item.id}
-                        className="hover:bg-gray-50 transition-colors"
+                        className="hover:bg-slate-50 transition-colors"
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="bg-indigo-100 p-2 rounded-lg">
-                              <FiPackage className="text-indigo-600" />
+                            <div className="bg-blue-50 p-2 rounded-lg">
+                              <FiPackage className="text-[#073dbe]" size={16} />
                             </div>
-                            <span className="font-semibold text-gray-800">
+                            <span className="font-semibold text-slate-900 text-sm">
                               {item.ingredient_name}
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`text-lg font-bold ${
+                        <td className="px-4 py-3">
+                          <span className={`text-base font-bold ${
                             isLowStock ? 'text-red-600' : 'text-green-600'
                           }`}>
                             {item.quantity ?? 0}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="text-gray-700 font-medium">
+                        <td className="px-4 py-3">
+                          <span className="text-slate-700 font-medium text-sm">
                             {item.unit}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           {isLowStock ? (
-                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold">
+                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-xs font-semibold">
                               <FiAlertCircle size={12} />
                               Low Stock
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
-                              ✓ Normal
+                            <span className="inline-flex items-center bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                              Normal
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => navigate(`/dashboard/ingredients/${item.id}/edit`)}
-                              className="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded-lg transition-all shadow-md hover:shadow-lg"
+                              className="bg-[#073dbe] hover:bg-[#052d99] text-white p-2 rounded-lg transition-all"
                               title="Edit"
                             >
                               <FiEdit size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(item.id, item.ingredient_name)}
-                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all shadow-md hover:shadow-lg"
+                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all"
                               title="Delete"
                             >
                               <FiTrash2 size={16} />

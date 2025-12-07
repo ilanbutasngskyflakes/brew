@@ -1,7 +1,9 @@
+/* eslint-disable react-hooks/immutability */
+/* eslint-disable no-case-declarations */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
-import { FiDownload, FiPrinter, FiCalendar, FiTrendingUp, FiDollarSign, FiShoppingCart } from "react-icons/fi";
+import { FiDownload, FiPrinter, FiCalendar, FiTrendingUp, FiShoppingCart, FiArrowLeft } from "react-icons/fi";
 import * as XLSX from 'xlsx';
 
 export default function SalesReportPage() {
@@ -10,20 +12,25 @@ export default function SalesReportPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        setLoading(true);
+        const { data } = await api.get("/order");
+        setOrders(data || []);
+      } catch (err) {
+        console.error("Cannot load orders:", err);
+        alert("Failed to load orders");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadOrders();
   }, []);
-
-  const loadOrders = async () => {
-    try {
-      const { data } = await api.get("/order");
-      setOrders(data || []);
-    } catch (err) {
-      console.error("Cannot load orders:", err);
-    }
-  };
 
   const filterOrdersByPeriod = () => {
     const now = new Date();
@@ -65,7 +72,6 @@ export default function SalesReportPage() {
     const totalDiscount = filteredOrders.reduce((sum, order) => sum + Number(order.discount || 0), 0);
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-    // Product sales breakdown
     const productSales = {};
     filteredOrders.forEach(order => {
       order.items?.forEach(item => {
@@ -129,7 +135,6 @@ export default function SalesReportPage() {
   };
 
   const exportToExcel = () => {
-    // Summary data
     const summaryData = [
       ['Barcelo Cafe - Sales Report'],
       ['Period:', getPeriodLabel()],
@@ -149,7 +154,6 @@ export default function SalesReportPage() {
       ['Order ID', 'Date', 'Total', 'Discount', 'Status', 'Items']
     ];
 
-    // Order details
     const orderData = filteredOrders.map(order => [
       order.id,
       new Date(order.created_at).toLocaleString(),
@@ -160,12 +164,10 @@ export default function SalesReportPage() {
     ]);
 
     const allData = [...summaryData, ...orderData];
-
     const ws = XLSX.utils.aoa_to_sheet(allData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
 
-    // Set column widths
     ws['!cols'] = [
       { wch: 15 },
       { wch: 20 },
@@ -200,17 +202,17 @@ export default function SalesReportPage() {
           .header { 
             text-align: center; 
             margin-bottom: 30px;
-            border-bottom: 3px solid #4F46E5;
+            border-bottom: 3px solid #073dbe;
             padding-bottom: 20px;
           }
           .header h1 { 
             margin: 0;
-            color: #4F46E5;
+            color: #073dbe;
             font-size: 28px;
           }
           .period { 
             font-size: 18px;
-            color: #666;
+            color: #64748b;
             margin-top: 10px;
           }
           .stats-grid {
@@ -220,31 +222,31 @@ export default function SalesReportPage() {
             margin-bottom: 30px;
           }
           .stat-card {
-            border: 2px solid #E5E7EB;
+            border: 2px solid #e2e8f0;
             padding: 20px;
             border-radius: 8px;
-            background: #F9FAFB;
+            background: #f8fafc;
           }
           .stat-label {
             font-size: 14px;
-            color: #6B7280;
+            color: #64748b;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
           .stat-value {
             font-size: 32px;
-            color: #1F2937;
+            color: #0f172a;
             font-weight: bold;
             margin-top: 8px;
           }
           .section-title {
             font-size: 20px;
             font-weight: bold;
-            color: #1F2937;
+            color: #0f172a;
             margin: 30px 0 15px 0;
             padding-bottom: 10px;
-            border-bottom: 2px solid #E5E7EB;
+            border-bottom: 2px solid #e2e8f0;
           }
           table {
             width: 100%;
@@ -252,7 +254,7 @@ export default function SalesReportPage() {
             margin-bottom: 30px;
           }
           th {
-            background: #4F46E5;
+            background: #073dbe;
             color: white;
             padding: 12px;
             text-align: left;
@@ -260,17 +262,17 @@ export default function SalesReportPage() {
           }
           td {
             padding: 10px 12px;
-            border-bottom: 1px solid #E5E7EB;
+            border-bottom: 1px solid #e2e8f0;
           }
           tr:hover {
-            background: #F9FAFB;
+            background: #f8fafc;
           }
           .footer {
             text-align: center;
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 2px solid #E5E7EB;
-            color: #6B7280;
+            border-top: 2px solid #e2e8f0;
+            color: #64748b;
             font-size: 12px;
           }
           @media print {
@@ -283,7 +285,7 @@ export default function SalesReportPage() {
         <div class="header">
           <h1>Barcelo Cafe</h1>
           <div class="period">Sales Report - ${getPeriodLabel()}</div>
-          <div style="font-size: 12px; color: #9CA3AF; margin-top: 10px;">
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
             Generated on ${new Date().toLocaleString()}
           </div>
         </div>
@@ -357,7 +359,7 @@ export default function SalesReportPage() {
               `).join('')}
             </tbody>
           </table>
-        ` : '<p style="text-align: center; color: #6B7280; padding: 40px;">No orders found for this period.</p>'}
+        ` : '<p style="text-align: center; color: #64748b; padding: 40px;">No orders found for this period.</p>'}
 
         <div class="footer">
           <div>Barcelo Cafe - La Consolacion College</div>
@@ -376,53 +378,71 @@ export default function SalesReportPage() {
     }, 500);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#073dbe] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-medium">Loading sales data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-[#073dbe] hover:text-[#052d99] font-medium mb-4 transition-colors text-sm"
+          >
+            <FiArrowLeft size={18} />
+            Back
+          </button>
+          
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="bg-indigo-600 p-3 rounded-xl shadow-lg">
-                  <FiTrendingUp className="text-white text-2xl" />
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-3">
+                <div className="bg-[#073dbe] p-2.5 rounded-lg">
+                  <FiTrendingUp className="text-white text-xl" />
                 </div>
                 Sales Report
               </h1>
-              <p className="text-gray-600 mt-2 ml-1">View and export sales data</p>
-            </div>
-            <div className="flex gap-3 w-full lg:w-auto">
-              <button
-                onClick={() => navigate("/cashier")}
-                className="flex-1 lg:flex-none bg-gray-700 hover:bg-gray-800 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold"
-              >
-                ← Back
-              </button>
+              <p className="text-slate-600 mt-1 text-sm">View and export sales analytics</p>
             </div>
           </div>
         </div>
 
         {/* Report Type Selection */}
-        <div className="bg-white rounded-xl shadow-xl p-6 mb-6 border-2 border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <FiCalendar className="text-indigo-600" />
-            Select Report Period
+        <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6 mb-4">
+          <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <FiCalendar className="text-[#073dbe]" size={18} />
+            Report Period
           </h3>
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            {[
-              { value: 'daily', label: 'Daily' },
-              { value: 'weekly', label: 'Weekly' },
-              { value: 'monthly', label: 'Monthly' },
-              { value: 'yearly', label: 'Yearly' }
-            ].map(type => (
+            {[{
+              value: 'daily',
+              label: 'Daily'
+            }, {
+              value: 'weekly',
+              label: 'Weekly'
+            }, {
+              value: 'monthly',
+              label: 'Monthly'
+            }, {
+              value: 'yearly',
+              label: 'Yearly'
+            }].map(type => (
               <button
                 key={type.value}
                 onClick={() => setReportType(type.value)}
-                className={`px-4 py-3 rounded-lg font-semibold transition-all ${
+                className={`px-4 py-2.5 rounded-lg font-medium transition-all text-sm ${
                   reportType === type.value
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-[#073dbe] text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
                 {type.label}
@@ -434,35 +454,35 @@ export default function SalesReportPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {reportType === 'daily' && (
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Date</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
                 />
               </div>
             )}
             
             {reportType === 'monthly' && (
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Month</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Select Month</label>
                 <input
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
                 />
               </div>
             )}
             
             {reportType === 'yearly' && (
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Year</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Select Year</label>
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none cursor-pointer text-sm"
                 >
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
                     <option key={year} value={year}>{year}</option>
@@ -474,93 +494,93 @@ export default function SalesReportPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <FiDollarSign className="text-green-600 text-2xl" />
+              <div className="bg-green-50 p-2.5 rounded-lg text-green-600 font-bold text-lg">
+                ₱
               </div>
             </div>
-            <div className="text-sm font-semibold text-gray-600 uppercase">Total Sales</div>
-            <div className="text-3xl font-bold text-gray-800 mt-2">₱{stats.totalSales.toFixed(2)}</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Sales</div>
+            <div className="text-2xl font-bold text-slate-900">₱{stats.totalSales.toFixed(2)}</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <FiShoppingCart className="text-blue-600 text-2xl" />
+              <div className="bg-blue-50 p-2.5 rounded-lg">
+                <FiShoppingCart className="text-[#073dbe]" size={20} />
               </div>
             </div>
-            <div className="text-sm font-semibold text-gray-600 uppercase">Total Orders</div>
-            <div className="text-3xl font-bold text-gray-800 mt-2">{stats.totalOrders}</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Orders</div>
+            <div className="text-2xl font-bold text-slate-900">{stats.totalOrders}</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-red-100 p-3 rounded-lg">
-                <FiTrendingUp className="text-red-600 text-2xl" />
+              <div className="bg-red-50 p-2.5 rounded-lg">
+                <FiTrendingUp className="text-red-600" size={20} />
               </div>
             </div>
-            <div className="text-sm font-semibold text-gray-600 uppercase">Total Discounts</div>
-            <div className="text-3xl font-bold text-gray-800 mt-2">₱{stats.totalDiscount.toFixed(2)}</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Discounts</div>
+            <div className="text-2xl font-bold text-slate-900">₱{stats.totalDiscount.toFixed(2)}</div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <FiDollarSign className="text-purple-600 text-2xl" />
+              <div className="bg-purple-50 p-2.5 rounded-lg text-purple-600 font-bold text-lg">
+                ₱
               </div>
             </div>
-            <div className="text-sm font-semibold text-gray-600 uppercase">Avg Order Value</div>
-            <div className="text-3xl font-bold text-gray-800 mt-2">₱{stats.averageOrderValue.toFixed(2)}</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Avg Order Value</div>
+            <div className="text-2xl font-bold text-slate-900">₱{stats.averageOrderValue.toFixed(2)}</div>
           </div>
         </div>
 
         {/* Export Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <button
             onClick={exportToExcel}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
           >
-            <FiDownload className="text-xl" />
+            <FiDownload size={18} />
             Export to Excel
           </button>
           <button
             onClick={printReport}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2"
+            className="flex-1 bg-[#073dbe] hover:bg-[#052d99] text-white px-5 py-3 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
           >
-            <FiPrinter className="text-xl" />
+            <FiPrinter size={18} />
             Print Report
           </button>
         </div>
 
         {/* Top Products */}
         {stats.topProducts.length > 0 && (
-          <div className="bg-white rounded-xl shadow-xl p-6 mb-6 border-2 border-gray-100">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Top Selling Products</h3>
+          <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6 mb-4">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Top Selling Products</h3>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Rank</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Product</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Variant</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase">Qty Sold</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase">Revenue</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Rank</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Product</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Variant</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Qty Sold</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Revenue</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100">
                   {stats.topProducts.map((product, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg text-white font-bold">
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center w-7 h-7 bg-[#073dbe] rounded-lg text-white font-bold text-sm">
                           {idx + 1}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-semibold text-gray-800">{product.product}</td>
-                      <td className="px-6 py-4 text-gray-600">{product.variant}</td>
-                      <td className="px-6 py-4 text-right font-semibold text-gray-800">{product.quantity}</td>
-                      <td className="px-6 py-4 text-right font-bold text-indigo-600">₱{product.revenue.toFixed(2)}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900 text-sm">{product.product}</td>
+                      <td className="px-4 py-3 text-slate-600 text-sm">{product.variant}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-900 text-sm">{product.quantity}</td>
+                      <td className="px-4 py-3 text-right font-bold text-[#073dbe] text-sm">₱{product.revenue.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -570,50 +590,52 @@ export default function SalesReportPage() {
         )}
 
         {/* Orders List */}
-        <div className="bg-white rounded-xl shadow-xl p-6 border-2 border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6">
+          <h3 className="text-lg font-bold text-slate-900 mb-4">
             Orders for {getPeriodLabel()} ({filteredOrders.length})
           </h3>
           
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-5xl mb-4">📊</div>
-              <p className="text-lg text-gray-500 font-medium">No orders found for this period</p>
+              <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiShoppingCart className="text-slate-400 text-2xl" />
+              </div>
+              <p className="text-base text-slate-600 font-medium">No orders found for this period</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Order ID</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Date & Time</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Items</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase">Discount</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase">Total</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Order ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Items</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Discount</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100">
                   {filteredOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-indigo-600">#{order.id}</div>
+                    <tr key={order.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-[#073dbe] text-sm">#{order.id}</div>
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
+                      <td className="px-4 py-3 text-slate-600 text-sm">
                         {new Date(order.created_at).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
+                      <td className="px-4 py-3 text-slate-600 text-sm">
                         {order.items?.length || 0} items
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-4 py-3 text-right text-sm">
                         {order.discount > 0 ? (
                           <span className="text-red-600 font-semibold">
                             ₱{Number(order.discount).toFixed(2)}
                           </span>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right font-bold text-gray-800">
+                      <td className="px-4 py-3 text-right font-bold text-slate-900 text-sm">
                         ₱{Number(order.total).toFixed(2)}
                       </td>
                     </tr>

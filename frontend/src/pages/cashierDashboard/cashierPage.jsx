@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/immutability */
+/* eslint-disable react-hooks/purity */
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
@@ -8,7 +10,8 @@ import {
   FiTrash2,
   FiPlus,
   FiMinus,
-  FiArrowLeft
+  FiArrowLeft,
+  FiPackage
 } from "react-icons/fi";
 
 export default function CashierPage() {
@@ -398,7 +401,7 @@ export default function CashierPage() {
         </div>
         <div class="divider"></div>
         <div style="text-align: center; font-weight: bold; margin: 10px 0;">OFFICIAL RECEIPT</div>
-        <div class="order-type">${order.order_type === 'dine-in' ? '🍽️ DINE IN' : '🥡 TAKE OUT'}</div>
+        <div class="order-type">${order.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
         ${isDiscounted ? `<div class="discount-note">${order.discount_type === 'senior' ? 'SENIOR CITIZEN' : 'PWD'} DISCOUNT APPLIED (-₱${safeDiscount.toFixed(2)})</div>` : ''}
         <div class="divider"></div>
         <div style="font-size: 11px; margin-bottom: 10px;">
@@ -460,20 +463,20 @@ export default function CashierPage() {
     <div className="flex flex-col lg:flex-row h-screen bg-slate-50">
       {/* Sidebar - Categories */}
       <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 overflow-y-auto flex flex-col">
-        <div className="p-6 bg-[#073dbe] sticky top-0 z-10">
-          <h2 className="text-xl font-bold text-white mb-1">Categories</h2>
-          <p className="text-blue-100 text-sm">Browse menu</p>
+        <div className="p-4 bg-[#073dbe] sticky top-0 z-10">
+          <h2 className="text-lg font-bold text-white mb-1">Categories</h2>
+          <p className="text-blue-100 text-xs">Browse menu</p>
           {editingOrderId && (
-            <div className="mt-3 bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-bold">
+            <div className="mt-2 bg-amber-500 text-white px-2 py-1.5 rounded-lg text-xs font-bold">
               Editing Order #{editingOrderId}
             </div>
           )}
         </div>
         
-        <div className="flex-1 p-4 space-y-2">
+        <div className="flex-1 p-3 space-y-2">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-all font-medium ${
+            className={`w-full text-left px-3 py-2 rounded-lg transition-all font-medium text-sm ${
               selectedCategory === "all"
                 ? "bg-[#073dbe] text-white"
                 : "bg-slate-100 hover:bg-slate-200 text-slate-700"
@@ -481,7 +484,7 @@ export default function CashierPage() {
           >
             <div className="flex items-center justify-between">
               <span>All Products</span>
-              <span className={`text-xs px-2 py-1 rounded-full ${
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
                 selectedCategory === "all" ? "bg-white/20" : "bg-slate-300"
               }`}>
                 {products.length}
@@ -495,7 +498,7 @@ export default function CashierPage() {
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(String(category.id))}
-                className={`w-full text-left px-4 py-3 rounded-lg transition-all font-medium capitalize ${
+                className={`w-full text-left px-3 py-2 rounded-lg transition-all font-medium capitalize text-sm ${
                   selectedCategory === String(category.id)
                     ? "bg-[#073dbe] text-white"
                     : "bg-slate-100 hover:bg-slate-200 text-slate-700"
@@ -503,7 +506,7 @@ export default function CashierPage() {
               >
                 <div className="flex items-center justify-between">
                   <span>{category.name}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
                     selectedCategory === String(category.id) ? "bg-white/20" : "bg-slate-300"
                   }`}>
                     {count}
@@ -514,13 +517,13 @@ export default function CashierPage() {
           })}
         </div>
         
-        <div className="sticky bottom-0 p-4 bg-white border-t border-slate-200">
+        <div className="sticky bottom-0 p-3 bg-white border-t border-slate-200">
           <button
             onClick={() => handleNavigateWithConfirm("/dashboard")}
-            className="w-full bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 rounded-lg transition-all font-medium flex items-center justify-center gap-2"
+            className="w-full bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
           >
-            <FiArrowLeft />
-            <span>Back to Dashboard</span>
+            <FiArrowLeft size={16} />
+            <span>Dashboard</span>
           </button>
         </div>
       </div>
@@ -528,50 +531,52 @@ export default function CashierPage() {
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-slate-200 z-10">
-          <div className="p-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <div className="p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">Barcelo Cafe POS</h1>
-                <p className="text-slate-600 mt-1">Select products to add to cart</p>
+                <h1 className="text-2xl font-bold text-slate-900">Barcelo Cafe</h1>
+                <p className="text-slate-600 text-sm mt-0.5">Select products to add to cart</p>
               </div>
               <button
                 onClick={() => handleNavigateWithConfirm("/cashier/order")}
-                className="w-full sm:w-auto bg-[#073dbe] hover:bg-[#052d99] text-white px-6 py-3 rounded-lg transition-all font-medium"
+                className="w-full sm:w-auto bg-[#073dbe] hover:bg-[#052d99] text-white px-4 py-2 rounded-lg transition-all font-medium text-sm"
               >
                 Order History
               </button>
             </div>
           
             <div className="relative">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-300 focus:border-[#073dbe] focus:ring-2 focus:ring-[#073dbe]/20 focus:outline-none transition-all"
+                className="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all text-sm"
               />
             </div>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4">
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-lg border border-slate-200">
-              <div className="text-6xl mb-4">🔍</div>
-              <p className="text-xl text-slate-600 font-bold mb-2">No products found</p>
-              <p className="text-slate-400">Try a different search term or category</p>
+            <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <FiPackage className="text-slate-400 text-2xl" />
+              </div>
+              <p className="text-lg text-slate-900 font-bold mb-1">No products found</p>
+              <p className="text-slate-500 text-sm">Try a different search term or category</p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6">
               {groupedProducts.map(({ category, products: categoryProducts }) => {
                 if (categoryProducts.length === 0) return null;
                 
                 return (
                   <div key={category.id}>
-                    <h2 className="text-2xl font-bold text-slate-900 capitalize mb-4">{category.name}</h2>
+                    <h2 className="text-xl font-bold text-slate-900 capitalize mb-3">{category.name}</h2>
                   
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                       {categoryProducts.map(product => {
                         const hasStock = product.variants?.some(v => v.quantity > 0);
                         return (
@@ -579,10 +584,10 @@ export default function CashierPage() {
                             key={product.id} 
                             onClick={() => hasStock && handleProductClick(product)}
                             className={`bg-white rounded-lg border border-slate-200 overflow-hidden transition-all ${
-                              hasStock ? 'hover:border-[#073dbe] cursor-pointer hover:shadow-lg' : 'opacity-50 cursor-not-allowed'
+                              hasStock ? 'hover:border-[#073dbe] cursor-pointer' : 'opacity-50 cursor-not-allowed'
                             }`}
                           >
-                            <div className="h-48 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                            <div className="h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                               {product.image ? (
                                 <img
                                   src={`http://localhost:8080/uploads/${product.image}`}
@@ -590,29 +595,29 @@ export default function CashierPage() {
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <div className="text-center p-4">
-                                  <div className="text-4xl text-slate-400 mb-2">📦</div>
-                                  <p className="text-slate-400 text-sm">No image</p>
+                                <div className="text-center p-3">
+                                  <FiPackage className="text-slate-400 text-3xl mx-auto mb-2" />
+                                  <p className="text-slate-400 text-xs">No image</p>
                                 </div>
                               )}
                               
                               {!hasStock && (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                  <span className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
+                                  <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold">
                                     OUT OF STOCK
                                   </span>
                                 </div>
                               )}
                             </div>
                             
-                            <div className="p-4">
-                              <h3 className="font-bold text-slate-900 mb-2 line-clamp-2">{product.product_name}</h3>
+                            <div className="p-3">
+                              <h3 className="font-bold text-slate-900 text-sm mb-2 line-clamp-2">{product.product_name}</h3>
                               
                               {product.variants && product.variants.length > 0 && (
                                 <div>
                                   {product.variants.length === 1 ? (
                                     <div className="flex items-center justify-between">
-                                      <p className="text-[#073dbe] font-bold text-xl">
+                                      <p className="text-[#073dbe] font-bold text-lg">
                                         ₱{Number(product.variants[0].price).toFixed(2)}
                                       </p>
                                       <p className="text-xs text-slate-500">
@@ -621,8 +626,8 @@ export default function CashierPage() {
                                     </div>
                                   ) : (
                                     <div>
-                                      <p className="text-xs text-slate-500 mb-1">{product.variants.length} variants</p>
-                                      <p className="text-[#073dbe] font-bold text-xl">
+                                      <p className="text-xs text-slate-500 mb-0.5">{product.variants.length} variants</p>
+                                      <p className="text-[#073dbe] font-bold text-lg">
                                         From ₱{Math.min(...product.variants.map(v => Number(v.price))).toFixed(2)}
                                       </p>
                                     </div>
@@ -645,11 +650,11 @@ export default function CashierPage() {
       {/* Variant Selection Modal */}
       {showVariantModal && selectedProduct && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6">
-            <div className="flex justify-between items-start mb-6">
+          <div className="bg-white rounded-lg max-w-lg w-full p-4">
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">{selectedProduct.product_name}</h3>
-                <p className="text-slate-600 mt-1">Select a variant</p>
+                <h3 className="text-xl font-bold text-slate-900">{selectedProduct.product_name}</h3>
+                <p className="text-slate-600 text-sm mt-0.5">Select a variant</p>
               </div>
               <button
                 onClick={() => {
@@ -658,17 +663,17 @@ export default function CashierPage() {
                 }}
                 className="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg flex items-center justify-center transition-all"
               >
-                <FiX size={24} />
+                <FiX size={20} />
               </button>
             </div>
             
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {selectedProduct.variants?.map(variant => (
                 <button
                   key={variant.id}
                   onClick={() => addToCart(selectedProduct, variant)}
                   disabled={variant.quantity === 0}
-                  className={`w-full text-left p-4 rounded-lg border transition-all ${
+                  className={`w-full text-left p-3 rounded-lg border transition-all ${
                     variant.quantity === 0
                       ? "bg-slate-100 border-slate-200 cursor-not-allowed opacity-50"
                       : "bg-white border-slate-300 hover:border-[#073dbe] hover:bg-blue-50"
@@ -676,11 +681,11 @@ export default function CashierPage() {
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-slate-900 text-lg">{variant.name}</p>
-                      <p className="text-[#073dbe] font-bold text-2xl mt-1">₱{Number(variant.price).toFixed(2)}</p>
+                      <p className="font-bold text-slate-900">{variant.name}</p>
+                      <p className="text-[#073dbe] font-bold text-xl mt-0.5">₱{Number(variant.price).toFixed(2)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-slate-500">
+                      <p className="text-xs text-slate-500">
                         {variant.quantity === 0 ? "Out of Stock" : `Stock: ${variant.quantity}`}
                       </p>
                     </div>
@@ -694,73 +699,73 @@ export default function CashierPage() {
 
       {/* Cart Sidebar */}
       <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 overflow-y-auto">
-        <div className="p-6 bg-[#073dbe] sticky top-0 z-10">
+        <div className="p-4 bg-[#073dbe] sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <FiShoppingCart />
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <FiShoppingCart size={18} />
                 Cart
               </h2>
-              <p className="text-blue-100 text-sm mt-1">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
+              <p className="text-blue-100 text-xs mt-0.5">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
             </div>
             {cart.length > 0 && (
-              <div className="bg-white/20 rounded-full px-3 py-1">
-                <p className="text-white font-bold">{cart.length}</p>
+              <div className="bg-white/20 rounded-full px-2.5 py-0.5">
+                <p className="text-white font-bold text-sm">{cart.length}</p>
               </div>
             )}
           </div>
         </div>
         
-        <div className="p-4">
+        <div className="p-3">
           {cart.length === 0 ? (
-            <div className="text-center py-16 bg-slate-50 rounded-lg border border-slate-200">
-              <FiShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-lg font-bold text-slate-600 mb-2">Cart is empty</p>
-              <p className="text-slate-400 text-sm">Add products to get started</p>
+            <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+              <FiShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-base font-bold text-slate-600 mb-1">Cart is empty</p>
+              <p className="text-slate-400 text-xs">Add products to get started</p>
             </div>
           ) : (
             <>
-              <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
+              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
                 {cart.map(item => {
                   const selectedTopping = item.topping_id ? getToppingById(item.topping_id) : null;
                   return (
-                    <div key={item.id} className="bg-white rounded-lg p-4 border border-slate-200">
-                      <div className="flex justify-between items-start mb-3">
+                    <div key={item.id} className="bg-white rounded-lg p-3 border border-slate-200">
+                      <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <h4 className="font-bold text-slate-900 line-clamp-1">{item.product_name}</h4>
-                          <p className="text-sm text-slate-600 mt-1">{item.variant_name}</p>
-                          <p className="text-[#073dbe] font-bold text-lg mt-1">₱{Number(item.price).toFixed(2)}</p>
+                          <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{item.product_name}</h4>
+                          <p className="text-xs text-slate-600 mt-0.5">{item.variant_name}</p>
+                          <p className="text-[#073dbe] font-bold mt-1">₱{Number(item.price).toFixed(2)}</p>
                         </div>
                         <button
                           onClick={() => removeFromCart(item.id)}
-                          className="text-red-600 hover:text-white hover:bg-red-600 w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
+                          className="text-red-600 hover:text-white hover:bg-red-600 w-7 h-7 rounded-lg font-bold transition-all flex items-center justify-center"
                         >
-                          <FiTrash2 />
+                          <FiTrash2 size={14} />
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-2">
+                      <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-1.5">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-lg font-bold transition-all flex items-center justify-center"
+                          className="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
                         >
-                          <FiMinus />
+                          <FiMinus size={14} />
                         </button>
-                        <span className="font-bold text-xl text-slate-800 flex-1 text-center">{item.quantity}</span>
+                        <span className="font-bold text-lg text-slate-800 flex-1 text-center">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="bg-green-600 hover:bg-green-700 text-white w-10 h-10 rounded-lg font-bold transition-all flex items-center justify-center"
+                          className="bg-green-600 hover:bg-green-700 text-white w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
                         >
-                          <FiPlus />
+                          <FiPlus size={14} />
                         </button>
                       </div>
 
                       {item.isMilkTea && toppings.length > 0 && (
-                        <div className="border-t border-slate-200 pt-3 mt-3">
-                          <p className="text-sm font-bold text-slate-800 mb-2">Add-ons:</p>
-                          <div className="space-y-2">
+                        <div className="border-t border-slate-200 pt-2 mt-2">
+                          <p className="text-xs font-bold text-slate-800 mb-2">Add-ons:</p>
+                          <div className="space-y-1.5">
                             {toppings.map(topping => (
-                              <label key={topping.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-all">
+                              <label key={topping.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-all">
                                 <input
                                   type="radio"
                                   name={`topping-${item.id}`}
@@ -768,27 +773,27 @@ export default function CashierPage() {
                                   onChange={() => selectTopping(item.id, topping.id)}
                                   className="w-4 h-4 text-[#073dbe]"
                                 />
-                                <span className="text-sm text-slate-700 flex-1 font-medium">{topping.name}</span>
-                                <span className="text-sm text-[#073dbe] font-bold">+₱{Number(topping.price).toFixed(2)}</span>
+                                <span className="text-xs text-slate-700 flex-1 font-medium">{topping.name}</span>
+                                <span className="text-xs text-[#073dbe] font-bold">+₱{Number(topping.price).toFixed(2)}</span>
                               </label>
                             ))}
                           </div>
                           {selectedTopping && (
                             <button
                               onClick={() => selectTopping(item.id, item.topping_id)}
-                              className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                              className="mt-1.5 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
                             >
-                              <FiX size={14} />
+                              <FiX size={12} />
                               Remove add-on
                             </button>
                           )}
                         </div>
                       )}
 
-                      <div className="border-t border-slate-200 pt-3 mt-3 bg-slate-50 rounded-lg p-2">
+                      <div className="border-t border-slate-200 pt-2 mt-2 bg-slate-50 rounded-lg p-2">
                         <p className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600 font-semibold">Item Total:</span>
-                          <span className="text-lg font-bold text-[#073dbe]">₱{((Number(item.price) + Number(selectedTopping?.price || 0)) * Number(item.quantity)).toFixed(2)}</span>
+                          <span className="text-xs text-slate-600 font-semibold">Item Total:</span>
+                          <span className="text-base font-bold text-[#073dbe]">₱{((Number(item.price) + Number(selectedTopping?.price || 0)) * Number(item.quantity)).toFixed(2)}</span>
                         </p>
                       </div>
                     </div>
@@ -797,96 +802,96 @@ export default function CashierPage() {
               </div>
 
               {/* Order Type */}
-              <div className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200">
-                <p className="font-bold text-slate-800 mb-3">Order Type</p>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded-lg transition-all">
+              <div className="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-200">
+                <p className="font-bold text-slate-800 mb-2 text-sm">Order Type</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
                     <input
                       type="radio"
                       name="orderType"
                       checked={orderType === "dine-in"}
                       onChange={() => setOrderType("dine-in")}
-                      className="w-5 h-5 text-[#073dbe]"
+                      className="w-4 h-4 text-[#073dbe]"
                     />
-                    <span className="font-semibold text-slate-700">Dine In</span>
+                    <span className="font-semibold text-slate-700 text-sm">Dine In</span>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded-lg transition-all">
+                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
                     <input
                       type="radio"
                       name="orderType"
                       checked={orderType === "takeout"}
                       onChange={() => setOrderType("takeout")}
-                      className="w-5 h-5 text-[#073dbe]"
+                      className="w-4 h-4 text-[#073dbe]"
                     />
-                    <span className="font-semibold text-slate-700">Take Out</span>
+                    <span className="font-semibold text-slate-700 text-sm">Take Out</span>
                   </label>
                 </div>
               </div>
 
               {/* Discount */}
-              <div className="bg-amber-50 rounded-lg p-4 mb-4 border border-amber-200">
-                <p className="font-bold text-slate-800 mb-3">Discount</p>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded-lg transition-all">
+              <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
+                <p className="font-bold text-slate-800 mb-2 text-sm">Discount</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
                     <input
                       type="radio"
                       name="discount"
                       checked={discountType === "none"}
                       onChange={() => setDiscountType("none")}
-                      className="w-5 h-5 text-amber-600"
+                      className="w-4 h-4 text-amber-600"
                     />
-                    <span className="font-semibold text-slate-700">No Discount</span>
+                    <span className="font-semibold text-slate-700 text-sm">No Discount</span>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded-lg transition-all">
+                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
                     <input
                       type="radio"
                       name="discount"
                       checked={discountType === "senior"}
                       onChange={() => setDiscountType("senior")}
-                      className="w-5 h-5 text-amber-600"
+                      className="w-4 h-4 text-amber-600"
                     />
                     <div className="flex-1 flex items-center justify-between">
-                      <span className="font-semibold text-slate-700">Senior Citizen</span>
-                      <span className="text-amber-700 font-bold text-sm">-₱5.00</span>
+                      <span className="font-semibold text-slate-700 text-sm">Senior Citizen</span>
+                      <span className="text-amber-700 font-bold text-xs">-₱5.00</span>
                     </div>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer hover:bg-white p-3 rounded-lg transition-all">
+                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
                     <input
                       type="radio"
                       name="discount"
                       checked={discountType === "pwd"}
                       onChange={() => setDiscountType("pwd")}
-                      className="w-5 h-5 text-amber-600"
+                      className="w-4 h-4 text-amber-600"
                     />
                     <div className="flex-1 flex items-center justify-between">
-                      <span className="font-semibold text-slate-700">PWD</span>
-                      <span className="text-amber-700 font-bold text-sm">-₱5.00</span>
+                      <span className="font-semibold text-slate-700 text-sm">PWD</span>
+                      <span className="text-amber-700 font-bold text-xs">-₱5.00</span>
                     </div>
                   </label>
                 </div>
               </div>
 
               {/* Summary */}
-              <div className="bg-slate-50 rounded-lg p-4 space-y-3 mb-4 border border-slate-200">
-                <div className="flex justify-between text-slate-600">
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2 mb-3 border border-slate-200">
+                <div className="flex justify-between text-slate-600 text-sm">
                   <span className="font-semibold">Subtotal:</span>
                   <span className="font-bold text-slate-800">₱{calculateSubtotal().toFixed(2)}</span>
                 </div>
                 {(discountType === "senior" || discountType === "pwd") && (
-                  <div className="flex justify-between text-red-600">
+                  <div className="flex justify-between text-red-600 text-sm">
                     <span className="font-semibold">Discount:</span>
                     <span className="font-bold">-₱{calculateDiscount().toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xl font-bold border-t border-slate-300 pt-3">
+                <div className="flex justify-between text-lg font-bold border-t border-slate-300 pt-2">
                   <span className="text-slate-800">Total:</span>
                   <span className="text-[#073dbe]">₱{calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Payment */}
-              <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
-                <label className="block font-bold text-slate-800 mb-3">Amount Paid</label>
+              <div className="bg-blue-50 rounded-lg p-3 mb-3 border border-blue-200">
+                <label className="block font-bold text-slate-800 mb-2 text-sm">Amount Paid</label>
                 <input
                   type="number"
                   step="0.01"
@@ -894,19 +899,19 @@ export default function CashierPage() {
                   onChange={(e) => setAmountPaid(e.target.value)}
                   onWheel={(e) => e.target.blur()}
                   placeholder="Enter amount..."
-                  className="w-full px-4 py-4 rounded-lg border border-blue-300 focus:border-[#073dbe] focus:ring-2 focus:ring-[#073dbe]/20 focus:outline-none text-xl font-bold text-slate-800"
+                  className="w-full px-3 py-3 rounded-lg border border-blue-300 focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 focus:outline-none text-lg font-bold text-slate-800"
                 />
                 {amountPaid && !isNaN(parseFloat(amountPaid)) && parseFloat(amountPaid) >= calculateTotal() && (
-                  <div className="mt-3 p-3 bg-green-600 rounded-lg">
-                    <p className="text-white font-bold flex items-center justify-between">
+                  <div className="mt-2 p-2 bg-green-600 rounded-lg">
+                    <p className="text-white font-bold flex items-center justify-between text-sm">
                       <span>Change:</span>
-                      <span className="text-xl">₱{(parseFloat(amountPaid) - calculateTotal()).toFixed(2)}</span>
+                      <span className="text-lg">₱{(parseFloat(amountPaid) - calculateTotal()).toFixed(2)}</span>
                     </p>
                   </div>
                 )}
                 {amountPaid && !isNaN(parseFloat(amountPaid)) && parseFloat(amountPaid) < calculateTotal() && (
-                  <div className="mt-3 p-3 bg-red-600 rounded-lg">
-                    <p className="text-white font-bold flex items-center justify-between">
+                  <div className="mt-2 p-2 bg-red-600 rounded-lg">
+                    <p className="text-white font-bold flex items-center justify-between text-sm">
                       <span>Need more:</span>
                       <span>₱{(calculateTotal() - parseFloat(amountPaid)).toFixed(2)}</span>
                     </p>
@@ -917,9 +922,9 @@ export default function CashierPage() {
               {/* Checkout */}
               <button
                 onClick={handleCheckout}
-                className="w-full bg-[#073dbe] hover:bg-[#052d99] text-white py-4 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-2"
+                className="w-full bg-[#073dbe] hover:bg-[#052d99] text-white py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
               >
-                <FiShoppingCart size={20} />
+                <FiShoppingCart size={18} />
                 <span>{editingOrderId ? "Update Order" : "Complete Order"}</span>
               </button>
             </>

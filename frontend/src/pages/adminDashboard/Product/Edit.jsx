@@ -1,6 +1,16 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../../api/api";
+import {
+  FiPackage,
+  FiX,
+  FiUpload,
+  FiImage,
+  FiPlus,
+  FiTrash2,
+  FiCheckCircle,
+} from "react-icons/fi";
 
 export default function Edit() {
   const isEditing = true;
@@ -18,6 +28,7 @@ export default function Edit() {
   const [variants, setVariants] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // Load categories and ingredients
   useEffect(() => {
@@ -142,20 +153,23 @@ export default function Edit() {
     e.preventDefault();
     const variant = variants[index];
     
+    if (variants.length === 1) {
+      alert("At least one variant is required");
+      return;
+    }
+    
     if (variant.id) {
-      // Delete from backend if it exists
       if (confirm("Delete this variant?")) {
         try {
           await api.delete(`/variant/${variant.id}`);
           setVariants(variants.filter((_, i) => i !== index));
-          alert("Variant deleted successfully!");
+          alert("Variant deleted successfully");
         } catch (err) {
           console.error("Error deleting variant:", err);
           alert("Error deleting variant");
         }
       }
     } else {
-      // Just remove from state if not saved yet
       setVariants(variants.filter((_, i) => i !== index));
     }
   };
@@ -164,7 +178,18 @@ export default function Edit() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!form.category_id || !form.product_name) {
+      alert("Category and Product Name are required");
+      return;
+    }
+
+    if (variants.some((v) => !v.variant_name || !v.price)) {
+      alert("All variants must have a name and price");
+      return;
+    }
+
     try {
+      setSubmitting(true);
       const data = new FormData();
       data.append("product_name", form.product_name);
       data.append("product_description", form.product_description || "");
@@ -173,231 +198,371 @@ export default function Edit() {
       data.append("variants", JSON.stringify(variants));
 
       await api.put(`/product/${id}`, data);
-      alert("Product updated successfully!");
+      alert("Product updated successfully");
       navigate("/dashboard/product");
     } catch (err) {
       console.error("Error updating product:", err);
       alert("Failed to update product");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="p-6 bg-white w-full rounded-md shadow-sm">
-        <div className="flex justify-center items-center h-64">
-          <p className="text-gray-500">Loading product data...</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#073dbe] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-medium">Loading product data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-white w-full rounded-md shadow-sm">
-      <div className="flex justify-between p-3">
-        <h1 className="uppercase text-lg font-medium items-center">
-          Edit Product
-        </h1>
-        <button
-          onClick={() => navigate("/dashboard/product")}
-          className="text-gray-600 hover:text-gray-800 transition"
-        >
-          ← Back
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-2">
-        {/* Product Name */}
-        <div className="flex flex-col gap-1 mb-2">
-          <label className="text-sm text-gray-600">Product Name</label>
-          <input
-            type="text"
-            name="product_name"
-            value={form.product_name}
-            onChange={handleChange}
-            placeholder={form.product_name || "Enter product name"}
-            className="p-2 border rounded-md shadow bg-white"
-            required
-          />
-        </div>
-
-        {/* Product Description */}
-        <div className="flex flex-col gap-1 mb-2 col-span-2">
-          <label className="text-sm text-gray-600">Product Description</label>
-          <textarea
-            name="product_description"
-            value={form.product_description}
-            onChange={handleChange}
-            placeholder={form.product_description || "Enter product description"}
-            className="p-2 border rounded-md shadow bg-white"
-            rows={3}
-          />
-        </div>
-
-        {/* Category */}
-        <div className="flex flex-col gap-1 mb-2">
-          <label className="text-sm text-gray-600">Category</label>
-          <select
-            name="category_id"
-            value={form.category_id}
-            onChange={handleChange}
-            className="p-2 border rounded-md shadow bg-white"
-            required
-          >
-            <option value="">Select Category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Image */}
-        <div className="flex flex-col gap-1 mb-2 col-span-2">
-          <label className="text-sm text-gray-600">Upload Image</label>
-          <input
-            type="file"
-            name="image"
-            accept="image/*"
-            onChange={handleChange}
-          />
-          {imagePreview && (
-            <div className="mt-2">
-              <p className="text-xs text-gray-500 mb-1">Current Image:</p>
-              <img
-                src={imagePreview}
-                className="h-32 w-32 rounded-xl border shadow object-cover"
-                alt="Product Preview"
-              />
+    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-3">
+                <div className="bg-[#073dbe] p-2.5 rounded-lg">
+                  <FiPackage className="text-white text-xl" />
+                </div>
+                Edit Product
+              </h1>
+              <p className="text-slate-600 mt-1 text-sm">
+                Update product details and variants
+              </p>
             </div>
-          )}
-        </div>
-
-        {/* Variants */}
-        <div className="col-span-2 border p-3 rounded-md border-gray-300 grid gap-3">
-          <div className="flex justify-between items-center">
-            <h2 className="font-medium text-gray-700">Product Variants</h2>
             <button
-              onClick={addVariant}
-              className="p-2 bg-green-600 text-white rounded shadow hover:bg-green-700"
+              onClick={() => navigate("/dashboard/product")}
+              className="text-slate-600 hover:text-slate-800 p-2 hover:bg-slate-100 rounded-lg transition-all"
             >
-              + Add Variant
+              <FiX size={20} />
             </button>
           </div>
+        </div>
 
-          {variants.map((v, index) => (
-            <div key={index} className="border-b pb-3 bg-gray-50 p-3 rounded">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-medium text-gray-700">
-                  Variant {index + 1}
-                  {v.variant_name && (
-                    <span className="text-sm text-gray-500 ml-2">({v.variant_name})</span>
-                  )}
-                </h3>
-                <button
-                  onClick={(e) => removeVariant(index, e)}
-                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                >
-                  Remove
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Product Information Card */}
+          <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">
+              Product Information
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Product Name */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-slate-700 mb-2">
+                  Product Name <span className="text-red-600">*</span>
+                </label>
                 <input
                   type="text"
-                  placeholder={v.variant_name || "Variant Name (e.g., Small, Medium)"}
-                  value={v.variant_name}
-                  onChange={(e) =>
-                    handleVariantChange(index, "variant_name", e.target.value)
-                  }
-                  className="p-2 border rounded-md bg-white"
+                  name="product_name"
+                  value={form.product_name}
+                  onChange={handleChange}
+                  placeholder="e.g., Caramel Macchiato"
+                  className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
                   required
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder={v.price || "Price"}
-                  value={v.price}
-                  onChange={(e) =>
-                    handleVariantChange(index, "price", Number(e.target.value))
-                  }
-                  onWheel={(e) => e.target.blur()}
-                  className="p-2 border rounded-md bg-white"
-                  required
+                  disabled={submitting}
                 />
               </div>
 
-              {/* Ingredients checkboxes */}
-              <div className="mt-3">
-                <label className="text-sm font-medium text-gray-600 block mb-2">
-                  Select Ingredients:
+              {/* Category */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-slate-700 mb-2">
+                  Category <span className="text-red-600">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto bg-white p-2 rounded border">
-                  {ingredients.map((ing) => {
-                    const selected = v.ingredients?.find(
-                      (i) => i.ingredient_id === ing.id
-                    );
-                    return (
-                      <div key={ing.id} className="flex items-center gap-2 p-1">
-                        <input
-                          type="checkbox"
-                          checked={!!selected}
-                          onChange={(e) =>
-                            handleIngredientChange(
-                              index,
-                              ing.id,
-                              selected?.amount || 0,
-                              e.target.checked
-                            )
-                          }
-                          className="w-4 h-4"
+                <select
+                  name="category_id"
+                  value={form.category_id}
+                  onChange={handleChange}
+                  className="p-2.5 border border-slate-300 rounded-lg bg-white text-slate-900 focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none cursor-pointer"
+                  required
+                  disabled={submitting}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col md:col-span-2">
+                <label className="text-sm font-medium text-slate-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  name="product_description"
+                  value={form.product_description}
+                  onChange={handleChange}
+                  placeholder="Enter product description..."
+                  className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none resize-none"
+                  rows={3}
+                  disabled={submitting}
+                />
+              </div>
+
+              {/* Image Upload */}
+              <div className="flex flex-col md:col-span-2">
+                <label className="text-sm font-medium text-slate-700 mb-2">
+                  Product Image
+                </label>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 hover:border-[#073dbe] transition-all">
+                  <input
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    onChange={handleChange}
+                    className="hidden"
+                    id="image-upload"
+                    disabled={submitting}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className={`${
+                      submitting ? "cursor-not-allowed" : "cursor-pointer"
+                    }`}
+                  >
+                    {imagePreview ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="h-40 w-40 object-cover rounded-lg border border-slate-200"
                         />
-                        <span className="text-sm flex-1">
-                          {ing.ingredient_name} ({ing.unit})
-                        </span>
-                        {selected && (
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={selected.amount}
-                            onChange={(e) =>
-                              handleIngredientChange(
-                                index,
-                                ing.id,
-                                Number(e.target.value),
-                                true
-                              )
-                            }
-                            onWheel={(e) => e.target.blur()}
-                            placeholder="Amount"
-                            className="w-20 p-1 border rounded text-sm"
-                          />
-                        )}
+                        <div className="flex items-center gap-2 text-[#073dbe] font-medium text-sm">
+                          <FiUpload size={16} />
+                          Click to change image
+                        </div>
                       </div>
-                    );
-                  })}
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 text-slate-500">
+                        <div className="bg-slate-100 p-4 rounded-lg">
+                          <FiImage size={28} />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-medium text-slate-700 text-sm">
+                            Click to upload image
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">PNG, JPG up to 10MB</p>
+                        </div>
+                      </div>
+                    )}
+                  </label>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* Submit */}
-        <div className="col-span-2 mt-3 flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/product")}
-            className="border border-gray-300 text-gray-700 py-2 px-6 rounded-md hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="bg-blue-600 text-white py-2 flex-1 rounded-xl shadow hover:bg-blue-700"
-          >
-            Update Product
-          </button>
-        </div>
-      </form>
+          {/* Variants Card */}
+          <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900">
+                Product Variants
+              </h2>
+              <button
+                type="button"
+                onClick={addVariant}
+                className="bg-[#073dbe] hover:bg-[#052d99] text-white px-3 py-2 rounded-lg transition-all font-medium flex items-center gap-2 text-sm"
+                disabled={submitting}
+              >
+                <FiPlus size={16} />
+                Add Variant
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {variants.map((variant, index) => (
+                <div
+                  key={index}
+                  className="border border-slate-200 rounded-lg p-4 bg-slate-50"
+                >
+                  {/* Variant Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-sm">
+                      <span className="bg-[#073dbe] text-white w-6 h-6 rounded-lg flex items-center justify-center text-xs">
+                        {index + 1}
+                      </span>
+                      Variant {index + 1}
+                      {variant.variant_name && (
+                        <span className="text-slate-500 font-normal">
+                          ({variant.variant_name})
+                        </span>
+                      )}
+                    </h3>
+                    {variants.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => removeVariant(index, e)}
+                        className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
+                        disabled={submitting}
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Variant Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="flex flex-col">
+                      <label className="text-sm font-medium text-slate-700 mb-2">
+                        Variant Name <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Small, Medium, Large"
+                        value={variant.variant_name}
+                        onChange={(e) =>
+                          handleVariantChange(index, "variant_name", e.target.value)
+                        }
+                        className="p-2.5 border border-slate-300 rounded-lg bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                        required
+                        disabled={submitting}
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="text-sm font-medium text-slate-700 mb-2">
+                        Price <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={variant.price}
+                        onChange={(e) =>
+                          handleVariantChange(index, "price", Number(e.target.value))
+                        }
+                        onWheel={(e) => e.target.blur()}
+                        step="0.01"
+                        min="0"
+                        className="p-2.5 border border-slate-300 rounded-lg bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                        required
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Ingredients Section */}
+                  <div className="border-t border-slate-200 pt-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">
+                      Select Ingredients
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2">
+                      {ingredients.map((ing) => {
+                        const selected = variant.ingredients?.find(
+                          (i) => i.ingredient_id === ing.id
+                        );
+                        return (
+                          <div
+                            key={ing.id}
+                            className={`border rounded-lg p-3 transition-all ${
+                              selected
+                                ? "border-[#073dbe] bg-blue-50"
+                                : "border-slate-200 bg-white hover:border-slate-300"
+                            }`}
+                          >
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!!selected}
+                                onChange={(e) =>
+                                  handleIngredientChange(
+                                    index,
+                                    ing.id,
+                                    selected?.amount || 0,
+                                    e.target.checked
+                                  )
+                                }
+                                className="mt-0.5 w-4 h-4 text-[#073dbe] rounded focus:ring-2 focus:ring-blue-200"
+                                disabled={submitting}
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-slate-900 text-sm">
+                                  {ing.ingredient_name}
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  Available: {ing.quantity} {ing.unit}
+                                </div>
+                                {selected && (
+                                  <input
+                                    type="number"
+                                    placeholder={`Amount (${ing.unit})`}
+                                    value={selected.amount}
+                                    onChange={(e) =>
+                                      handleIngredientChange(
+                                        index,
+                                        ing.id,
+                                        Number(e.target.value),
+                                        true
+                                      )
+                                    }
+                                    onWheel={(e) => e.target.blur()}
+                                    step="0.01"
+                                    min="0"
+                                    className="w-full mt-2 p-2 border border-[#073dbe] rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                                    disabled={submitting}
+                                  />
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="submit"
+              className="flex-1 bg-[#073dbe] hover:bg-[#052d99] text-white py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <FiCheckCircle size={18} />
+                  Update Product
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/product")}
+              className="flex-1 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-3 rounded-lg transition-all font-medium disabled:opacity-50"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <style jsx>{`
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
     </div>
   );
 }

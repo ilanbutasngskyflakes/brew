@@ -1,8 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../../api/api";
 import { FiPackage, FiX, FiUpload, FiImage, FiTrash2 } from "react-icons/fi";
-
 
 export default function ProductForm({ formData = {}, isEditing, onSubmit, onDelete, onClose }) {
   const navigate = useNavigate();
@@ -90,20 +90,17 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
     try {
       setLoading(true);
       if (isEditing && formData?.id) {
-        // Update existing product
         await api.put(`/product/${formData.id}`, data, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        alert("Product updated successfully! ✅");
+        alert("Product updated successfully");
       } else {
-        // Create new product
         await api.post("/product/add", data, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        alert("Product added successfully! ✅");
+        alert("Product added successfully");
       }
       
-      // Close modal and refresh
       onClose();
       if (onSubmit) {
         onSubmit(data);
@@ -118,12 +115,12 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
 
   // Handle delete
   const handleDelete = async () => {
-    if (!confirm("⚠️ Are you sure you want to delete this product? This action cannot be undone.")) return;
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
     
     try {
       setLoading(true);
       await api.delete(`/product/${formData.id}`);
-      alert("Product deleted successfully! 🗑️");
+      alert("Product deleted successfully");
       onClose();
       if (onDelete) {
         onDelete(formData.id);
@@ -138,43 +135,43 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl relative my-8 border-2 border-gray-100">
+      <div className="bg-white w-full max-w-4xl rounded-lg shadow-xl relative my-8 border border-slate-200">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b-2 border-gray-100 rounded-t-xl p-6 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-slate-200 rounded-t-lg p-4 lg:p-6 flex items-center justify-between z-10">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 flex items-center gap-3">
-              <div className="bg-indigo-600 p-3 rounded-xl shadow-lg">
-                <FiPackage className="text-white text-xl" />
+            <h1 className="text-xl lg:text-2xl font-bold text-slate-900 flex items-center gap-3">
+              <div className="bg-[#073dbe] p-2.5 rounded-lg">
+                <FiPackage className="text-white text-lg" />
               </div>
               {isEditing ? "Edit Product" : "Add New Product"}
             </h1>
-            <p className="text-gray-600 text-sm mt-2 ml-1">
+            <p className="text-slate-600 text-sm mt-1">
               {isEditing ? "Update product information" : "Create a new menu item"}
             </p>
           </div>
           <button
-            className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-lg transition-all"
+            className="text-slate-600 hover:text-slate-800 p-2 hover:bg-slate-100 rounded-lg transition-all"
             onClick={onClose}
             disabled={loading}
           >
-            <FiX size={24} />
+            <FiX size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <div className="p-6 lg:p-8">
-          <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
+        <div className="p-4 lg:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
             {/* Category & Product Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-gray-700 mb-2">
+                <label className="text-sm font-medium text-slate-700 mb-2">
                   Category <span className="text-red-600">*</span>
                 </label>
                 <select
                   name="category_id"
                   value={form.category_id}
                   onChange={handleChange}
-                  className="p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none cursor-pointer"
+                  className="p-2.5 border border-slate-300 rounded-lg bg-white text-slate-900 focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none cursor-pointer"
                   required
                   disabled={loading}
                 >
@@ -188,7 +185,7 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
               </div>
 
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-gray-700 mb-2">
+                <label className="text-sm font-medium text-slate-700 mb-2">
                   Product Name <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -197,7 +194,7 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
                   value={form.product_name}
                   onChange={handleChange}
                   placeholder="e.g., Caramel Macchiato"
-                  className="p-3 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
+                  className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
                   required
                   disabled={loading}
                 />
@@ -206,7 +203,7 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
 
             {/* Description */}
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-gray-700 mb-2">
+              <label className="text-sm font-medium text-slate-700 mb-2">
                 Description
               </label>
               <textarea
@@ -214,18 +211,18 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
                 value={form.product_description}
                 onChange={handleChange}
                 placeholder="Enter product description..."
-                className="p-3 border-2 border-gray-300 rounded-lg text-gray-700 bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none resize-none"
-                rows={4}
+                className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none resize-none"
+                rows={3}
                 disabled={loading}
               />
             </div>
 
             {/* Image Upload */}
             <div className="flex flex-col">
-              <label className="text-sm font-semibold text-gray-700 mb-2">
+              <label className="text-sm font-medium text-slate-700 mb-2">
                 Product Image
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-indigo-500 transition-all">
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 hover:border-[#073dbe] transition-all">
                 <input 
                   type="file" 
                   name="image" 
@@ -237,25 +234,25 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
                 />
                 <label htmlFor="image-upload" className={`${loading ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                   {imagePreview ? (
-                    <div className="flex flex-col items-center gap-4">
+                    <div className="flex flex-col items-center gap-3">
                       <img
                         src={imagePreview}
                         alt="Preview"
-                        className="h-48 w-48 object-cover rounded-lg border-2 border-gray-200 shadow-md"
+                        className="h-40 w-40 object-cover rounded-lg border border-slate-200"
                       />
-                      <div className="flex items-center gap-2 text-indigo-600 font-semibold">
-                        <FiUpload />
+                      <div className="flex items-center gap-2 text-[#073dbe] font-medium text-sm">
+                        <FiUpload size={16} />
                         Click to change image
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-3 text-gray-500">
-                      <div className="bg-gray-100 p-4 rounded-full">
-                        <FiImage size={32} />
+                    <div className="flex flex-col items-center gap-3 text-slate-500">
+                      <div className="bg-slate-100 p-4 rounded-lg">
+                        <FiImage size={28} />
                       </div>
                       <div className="text-center">
-                        <p className="font-semibold text-gray-700">Click to upload image</p>
-                        <p className="text-sm">PNG, JPG up to 10MB</p>
+                        <p className="font-medium text-slate-700 text-sm">Click to upload image</p>
+                        <p className="text-xs text-slate-500 mt-1">PNG, JPG up to 10MB</p>
                       </div>
                     </div>
                   )}
@@ -266,30 +263,29 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
             {/* Variants Display */}
             {isEditing && variants?.length > 0 && (
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-indigo-600 rounded"></span>
+                <label className="text-sm font-medium text-slate-700 mb-2">
                   Variants ({variants.length})
                 </label>
-                <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
+                <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2 max-h-60 overflow-y-auto">
                   {variants.map((v) => (
-                    <div key={v.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div key={v.id} className="bg-white rounded-lg p-3 border border-slate-200 hover:border-slate-300 transition-all">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="font-semibold text-gray-800">{v.name}</span>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <span className="font-semibold text-slate-900 text-sm">{v.name}</span>
+                          <div className="text-xs text-slate-500 mt-1">
                             Stock: <span className={`font-semibold ${Number(v.stock) < 10 ? 'text-red-600' : 'text-green-600'}`}>
                               {v.stock}
                             </span>
                           </div>
                         </div>
-                        <span className="font-bold text-indigo-600">₱{Number(v.price).toFixed(2)}</span>
+                        <span className="font-bold text-[#073dbe]">₱{Number(v.price).toFixed(2)}</span>
                       </div>
                       {v.ingredients?.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200">
-                          <p className="text-xs text-gray-600 font-medium mb-1">Ingredients:</p>
+                        <div className="pt-2 border-t border-slate-200">
+                          <p className="text-xs text-slate-600 font-medium mb-1">Ingredients:</p>
                           <div className="flex flex-wrap gap-1">
                             {v.ingredients.map((i) => (
-                              <span key={i.id} className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200">
+                              <span key={i.id} className="text-xs bg-blue-50 text-[#073dbe] px-2 py-1 rounded border border-blue-200">
                                 {i.name} ({i.amount}{i.unit})
                               </span>
                             ))}
@@ -303,10 +299,10 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
             )}
 
             {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-100">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
               <button
                 type="submit"
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 bg-[#073dbe] hover:bg-[#052d99] text-white py-2.5 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 disabled={loading}
               >
                 {loading ? (
@@ -322,11 +318,11 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 rounded-lg transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
-                  <FiTrash2 size={18} />
-                  Delete Product
+                  <FiTrash2 size={16} />
+                  Delete
                 </button>
               )}
             </div>
@@ -335,19 +331,19 @@ export default function ProductForm({ formData = {}, isEditing, onSubmit, onDele
       </div>
 
       <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
+        ::-webkit-scrollbar {
+          width: 6px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
+        ::-webkit-scrollbar-track {
+          background: #f1f5f9;
           border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #4F46E5;
+        ::-webkit-scrollbar-thumb {
+          background: #073dbe;
           border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #4338CA;
+        ::-webkit-scrollbar-thumb:hover {
+          background: #052d99;
         }
       `}</style>
     </div>
