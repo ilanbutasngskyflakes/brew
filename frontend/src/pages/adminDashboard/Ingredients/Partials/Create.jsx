@@ -13,12 +13,39 @@ export default function Create() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Unit conversion functions
+  const convertToBaseUnit = (quantity, unit) => {
+    const value = parseFloat(quantity);
+
+    // Convert liquids to ml
+    if (unit === "L") {
+      return { quantity: value * 1000, unit: "ml" };
+    }
+
+    // Convert solids to g
+    if (unit === "kg") {
+      return { quantity: value * 1000, unit: "g" };
+    }
+
+    // Return as-is for base units (ml, g, pcs)
+    return { quantity: value, unit };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       setSubmitting(true);
-      await api.post("/ingredients/add", formData);
+
+      // Convert to base units before submitting
+      const converted = convertToBaseUnit(formData.quantity, formData.unit);
+      const dataToSubmit = {
+        ingredient_name: formData.ingredient_name,
+        quantity: converted.quantity,
+        unit: converted.unit,
+      };
+
+      await api.post("/ingredients/add", dataToSubmit);
       alert("Ingredient added successfully");
       navigate("/dashboard/ingredients");
     } catch (error) {
@@ -128,8 +155,9 @@ export default function Create() {
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-slate-700">
-                <span className="font-semibold text-[#073dbe]">Tip:</span> Use
-                consistent units across all ingredients for accurate tracking.
+                <span className="font-semibold text-[#073dbe]">Tip:</span> Liters
+                will be automatically converted to ml, and kilograms to grams for
+                consistent tracking.
               </p>
             </div>
 
