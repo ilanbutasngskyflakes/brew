@@ -1,7 +1,7 @@
 import { useState } from "react";
 import api from "../../../../api/api";
 import { useNavigate } from "react-router-dom";
-import { FiPackage, FiX, FiPlus } from "react-icons/fi";
+import { FiPackage, FiX, FiPlus, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 
 export default function Create() {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export default function Create() {
     unit: "ml",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [modal, setModal] = useState({ show: false, type: "", message: "" });
 
   // Unit conversion functions
   const convertToBaseUnit = (quantity, unit) => {
@@ -31,6 +32,17 @@ export default function Create() {
     return { quantity: value, unit };
   };
 
+  const showModal = (type, message) => {
+    setModal({ show: true, type, message });
+  };
+
+  const closeModal = () => {
+    setModal({ show: false, type: "", message: "" });
+    if (modal.type === "success") {
+      navigate("/dashboard/ingredients");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -46,11 +58,9 @@ export default function Create() {
       };
 
       await api.post("/ingredients/add", dataToSubmit);
-      alert("Ingredient added successfully");
-      navigate("/dashboard/ingredients");
+      showModal("success", "Ingredient added successfully!");
     } catch (error) {
-      console.error(error);
-      alert("Error adding ingredient");
+      showModal("error", error.response?.data?.message || "Error adding ingredient. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -144,9 +154,9 @@ export default function Create() {
                   disabled={submitting}
                 >
                   <option value="ml">ml (milliliters)</option>
+                  <option value="L">L (liters)</option>
                   <option value="g">g (grams)</option>
                   <option value="kg">kg (kilograms)</option>
-                  <option value="L">L (liters)</option>
                   <option value="pcs">pcs (pieces)</option>
                 </select>
               </div>
@@ -192,6 +202,43 @@ export default function Create() {
           </form>
         </div>
       </div>
+
+      {/* Modal */}
+      {modal.show && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                modal.type === "success" ? "bg-green-100" : "bg-red-100"
+              }`}>
+                {modal.type === "success" ? (
+                  <FiCheckCircle size={24} className="text-green-600" />
+                ) : (
+                  <FiAlertCircle size={24} className="text-red-600" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                {modal.type === "success" ? "Success" : "Error"}
+              </h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">{modal.message}</p>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={closeModal}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  modal.type === "success"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         input[type="number"]::-webkit-inner-spin-button,

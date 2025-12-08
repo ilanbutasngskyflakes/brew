@@ -1,9 +1,10 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/immutability */
 /* eslint-disable no-case-declarations */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
-import { FiDownload, FiPrinter, FiCalendar, FiTrendingUp, FiShoppingCart, FiArrowLeft } from "react-icons/fi";
+import { FiDownload, FiPrinter, FiCalendar, FiTrendingUp, FiShoppingCart, FiArrowLeft, FiAlertCircle, FiCheckCircle } from "react-icons/fi";
 import * as XLSX from 'xlsx';
 
 export default function SalesReportPage() {
@@ -13,6 +14,7 @@ export default function SalesReportPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState({ show: false, type: "", message: "" });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,8 +24,7 @@ export default function SalesReportPage() {
         const { data } = await api.get("/order");
         setOrders(data || []);
       } catch (err) {
-        console.error("Cannot load orders:", err);
-        alert("Failed to load orders");
+        showModal("error", "Failed to load orders. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -31,6 +32,14 @@ export default function SalesReportPage() {
 
     loadOrders();
   }, []);
+
+  const showModal = (type, message) => {
+    setModal({ show: true, type, message });
+  };
+
+  const closeModal = () => {
+    setModal({ show: false, type: "", message: "" });
+  };
 
   const filterOrdersByPeriod = () => {
     const now = new Date();
@@ -135,56 +144,61 @@ export default function SalesReportPage() {
   };
 
   const exportToExcel = () => {
-    const summaryData = [
-      ['Barcelo Cafe - Sales Report'],
-      ['Period:', getPeriodLabel()],
-      ['Generated:', new Date().toLocaleString()],
-      [],
-      ['Summary Statistics'],
-      ['Total Sales:', `₱${stats.totalSales.toFixed(2)}`],
-      ['Total Orders:', stats.totalOrders],
-      ['Total Discounts:', `₱${stats.totalDiscount.toFixed(2)}`],
-      ['Average Order Value:', `₱${stats.averageOrderValue.toFixed(2)}`],
-      [],
-      ['Top Selling Products'],
-      ['Product', 'Variant', 'Quantity Sold', 'Revenue'],
-      ...stats.topProducts.map(p => [p.product, p.variant, p.quantity, `₱${p.revenue.toFixed(2)}`]),
-      [],
-      ['Order Details'],
-      ['Order ID', 'Date', 'Total', 'Discount', 'Status', 'Items']
-    ];
+    try {
+      const summaryData = [
+        ['Barcelo Cafe - Sales Report'],
+        ['Period:', getPeriodLabel()],
+        ['Generated:', new Date().toLocaleString()],
+        [],
+        ['Summary Statistics'],
+        ['Total Sales:', `₱${stats.totalSales.toFixed(2)}`],
+        ['Total Orders:', stats.totalOrders],
+        ['Total Discounts:', `₱${stats.totalDiscount.toFixed(2)}`],
+        ['Average Order Value:', `₱${stats.averageOrderValue.toFixed(2)}`],
+        [],
+        ['Top Selling Products'],
+        ['Product', 'Variant', 'Quantity Sold', 'Revenue'],
+        ...stats.topProducts.map(p => [p.product, p.variant, p.quantity, `₱${p.revenue.toFixed(2)}`]),
+        [],
+        ['Order Details'],
+        ['Order ID', 'Date', 'Total', 'Discount', 'Status', 'Items']
+      ];
 
-    const orderData = filteredOrders.map(order => [
-      order.id,
-      new Date(order.created_at).toLocaleString(),
-      `₱${Number(order.total).toFixed(2)}`,
-      `₱${Number(order.discount || 0).toFixed(2)}`,
-      order.status,
-      order.items?.length || 0
-    ]);
+      const orderData = filteredOrders.map(order => [
+        order.id,
+        new Date(order.created_at).toLocaleString(),
+        `₱${Number(order.total).toFixed(2)}`,
+        `₱${Number(order.discount || 0).toFixed(2)}`,
+        order.status,
+        order.items?.length || 0
+      ]);
 
-    const allData = [...summaryData, ...orderData];
-    const ws = XLSX.utils.aoa_to_sheet(allData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
+      const allData = [...summaryData, ...orderData];
+      const ws = XLSX.utils.aoa_to_sheet(allData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
 
-    ws['!cols'] = [
-      { wch: 15 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 10 }
-    ];
+      ws['!cols'] = [
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 10 }
+      ];
 
-    const fileName = `sales_report_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+      const fileName = `sales_report_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      showModal("success", "Report exported successfully!");
+    } catch (error) {
+      showModal("error", "Failed to export report. Please try again.");
+    }
   };
 
   const printReport = () => {
     const printWindow = window.open('', '_blank', 'height=800,width=800');
     if (!printWindow) {
-      alert('Popup blocked. Please allow popups to print.');
+      showModal("error", "Popup blocked. Please allow popups to print.");
       return;
     }
 
@@ -193,91 +207,126 @@ export default function SalesReportPage() {
       <head>
         <title>Sales Report - ${getPeriodLabel()}</title>
         <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
-            font-family: Arial, sans-serif; 
-            padding: 30px;
-            max-width: 1000px;
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 20mm;
+            font-size: 11px;
+            line-height: 1.4;
+            width: 210mm;
             margin: 0 auto;
           }
           .header { 
             text-align: center; 
-            margin-bottom: 30px;
-            border-bottom: 3px solid #073dbe;
-            padding-bottom: 20px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #073dbe;
+            padding-bottom: 10px;
           }
           .header h1 { 
-            margin: 0;
+            font-size: 18px;
             color: #073dbe;
-            font-size: 28px;
+            margin-bottom: 3px;
           }
           .period { 
-            font-size: 18px;
+            font-size: 12px;
             color: #64748b;
-            margin-top: 10px;
+            margin-top: 3px;
+          }
+          .generated {
+            font-size: 9px;
+            color: #94a3b8;
+            margin-top: 3px;
           }
           .stats-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
           }
           .stat-card {
-            border: 2px solid #e2e8f0;
-            padding: 20px;
-            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            border-radius: 4px;
             background: #f8fafc;
           }
           .stat-label {
-            font-size: 14px;
+            font-size: 9px;
             color: #64748b;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 4px;
           }
           .stat-value {
-            font-size: 32px;
+            font-size: 16px;
             color: #0f172a;
             font-weight: bold;
-            margin-top: 8px;
           }
           .section-title {
-            font-size: 20px;
+            font-size: 12px;
             font-weight: bold;
             color: #0f172a;
-            margin: 30px 0 15px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e2e8f0;
+            margin: 15px 0 8px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e2e8f0;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
+            font-size: 10px;
           }
           th {
             background: #073dbe;
             color: white;
-            padding: 12px;
+            padding: 6px 8px;
             text-align: left;
             font-weight: 600;
+            font-size: 9px;
           }
           td {
-            padding: 10px 12px;
+            padding: 5px 8px;
             border-bottom: 1px solid #e2e8f0;
           }
-          tr:hover {
-            background: #f8fafc;
+          .rank {
+            display: inline-block;
+            background: #073dbe;
+            color: white;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
           }
           .footer {
             text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #e2e8f0;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 9px;
             color: #64748b;
-            font-size: 12px;
           }
           @media print {
-            body { padding: 20px; }
-            .stat-card { break-inside: avoid; }
+            body { 
+              padding: 20mm;
+              width: 210mm;
+            }
+            .stat-card { 
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            table {
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
+            @page { 
+              size: A4;
+              margin: 20mm;
+            }
           }
         </style>
       </head>
@@ -285,9 +334,7 @@ export default function SalesReportPage() {
         <div class="header">
           <h1>Barcelo Cafe</h1>
           <div class="period">Sales Report - ${getPeriodLabel()}</div>
-          <div style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
-            Generated on ${new Date().toLocaleString()}
-          </div>
+          <div class="generated">Generated: ${new Date().toLocaleString()}</div>
         </div>
 
         <div class="stats-grid">
@@ -300,11 +347,11 @@ export default function SalesReportPage() {
             <div class="stat-value">${stats.totalOrders}</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Total Discounts</div>
+            <div class="stat-label">Discounts</div>
             <div class="stat-value">₱${stats.totalDiscount.toFixed(2)}</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Average Order Value</div>
+            <div class="stat-label">Avg Order</div>
             <div class="stat-value">₱${stats.averageOrderValue.toFixed(2)}</div>
           </div>
         </div>
@@ -314,21 +361,21 @@ export default function SalesReportPage() {
           <table>
             <thead>
               <tr>
-                <th>Rank</th>
+                <th style="width: 30px;">Rank</th>
                 <th>Product</th>
                 <th>Variant</th>
-                <th>Quantity Sold</th>
-                <th>Revenue</th>
+                <th style="text-align: right; width: 60px;">Qty</th>
+                <th style="text-align: right; width: 80px;">Revenue</th>
               </tr>
             </thead>
             <tbody>
               ${stats.topProducts.map((product, idx) => `
                 <tr>
-                  <td><strong>#${idx + 1}</strong></td>
-                  <td>${product.product}</td>
+                  <td><span class="rank">#${idx + 1}</span></td>
+                  <td style="font-weight: 600;">${product.product}</td>
                   <td>${product.variant}</td>
-                  <td>${product.quantity}</td>
-                  <td><strong>₱${product.revenue.toFixed(2)}</strong></td>
+                  <td style="text-align: right; font-weight: 600;">${product.quantity}</td>
+                  <td style="text-align: right; font-weight: bold;">₱${product.revenue.toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -336,30 +383,30 @@ export default function SalesReportPage() {
         ` : ''}
 
         ${filteredOrders.length > 0 ? `
-          <div class="section-title">Order Details</div>
+          <div class="section-title">Order Details (${filteredOrders.length} orders)</div>
           <table>
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th style="width: 60px;">ID</th>
                 <th>Date & Time</th>
-                <th>Items</th>
-                <th>Discount</th>
-                <th>Total</th>
+                <th style="text-align: center; width: 50px;">Items</th>
+                <th style="text-align: right; width: 70px;">Discount</th>
+                <th style="text-align: right; width: 80px;">Total</th>
               </tr>
             </thead>
             <tbody>
               ${filteredOrders.map(order => `
                 <tr>
-                  <td><strong>#${order.id}</strong></td>
+                  <td style="font-weight: bold; color: #073dbe;">#${order.id}</td>
                   <td>${new Date(order.created_at).toLocaleString()}</td>
-                  <td>${order.items?.length || 0} items</td>
-                  <td>${order.discount > 0 ? `₱${Number(order.discount).toFixed(2)}` : '-'}</td>
-                  <td><strong>₱${Number(order.total).toFixed(2)}</strong></td>
+                  <td style="text-align: center;">${order.items?.length || 0}</td>
+                  <td style="text-align: right;">${order.discount > 0 ? `₱${Number(order.discount).toFixed(2)}` : '-'}</td>
+                  <td style="text-align: right; font-weight: bold;">₱${Number(order.total).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        ` : '<p style="text-align: center; color: #64748b; padding: 40px;">No orders found for this period.</p>'}
+        ` : '<p style="text-align: center; color: #64748b; padding: 20px;">No orders for this period.</p>'}
 
         <div class="footer">
           <div>Barcelo Cafe - La Consolacion College</div>
@@ -375,7 +422,7 @@ export default function SalesReportPage() {
     
     setTimeout(() => {
       printWindow.print();
-    }, 500);
+    }, 250);
   };
 
   if (loading) {
@@ -646,6 +693,43 @@ export default function SalesReportPage() {
           )}
         </div>
       </div>
+
+      {/* Modal */}
+      {modal.show && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                modal.type === "success" ? "bg-green-100" : "bg-red-100"
+              }`}>
+                {modal.type === "success" ? (
+                  <FiCheckCircle size={24} className="text-green-600" />
+                ) : (
+                  <FiAlertCircle size={24} className="text-red-600" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                {modal.type === "success" ? "Success" : "Error"}
+              </h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">{modal.message}</p>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={closeModal}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  modal.type === "success"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

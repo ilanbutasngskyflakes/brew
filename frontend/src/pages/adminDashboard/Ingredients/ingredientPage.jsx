@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../../api/api";
@@ -7,7 +8,8 @@ import {
   FiTrash2, 
   FiPlus, 
   FiAlertCircle,
-  FiSearch
+  FiSearch,
+  FiCheckCircle
 } from "react-icons/fi";
 
 export default function IngredientPage() {
@@ -15,6 +17,8 @@ export default function IngredientPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStock, setFilterStock] = useState("all");
+  const [modal, setModal] = useState({ show: false, type: "", message: "" });
+  const [deleteModal, setDeleteModal] = useState({ show: false, id: null, name: "" });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,23 +31,37 @@ export default function IngredientPage() {
       const res = await api.get("/ingredients");
       setIngredients(res.data);
     } catch (error) {
-      console.error("Error fetching ingredients:", error);
-      alert("Failed to load ingredients");
+      showModal("error", "Failed to load ingredients. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
+  const showModal = (type, message) => {
+    setModal({ show: true, type, message });
+  };
 
+  const closeModal = () => {
+    setModal({ show: false, type: "", message: "" });
+  };
+
+  const openDeleteModal = (id, name) => {
+    setDeleteModal({ show: true, id, name });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ show: false, id: null, name: "" });
+  };
+
+  const handleDelete = async () => {
     try {
-      await api.delete(`/ingredients/${id}`);
-      alert("Ingredient deleted successfully");
+      await api.delete(`/ingredients/${deleteModal.id}`);
+      closeDeleteModal();
+      showModal("success", "Ingredient deleted successfully!");
       fetchIngredients();
     } catch (error) {
-      console.error("Error deleting ingredient:", error);
-      alert("Failed to delete ingredient");
+      closeDeleteModal();
+      showModal("error", error.response?.data?.message || "Failed to delete ingredient. Please try again.");
     }
   };
 
@@ -286,7 +304,7 @@ export default function IngredientPage() {
                               <FiEdit size={16} />
                             </button>
                             <button
-                              onClick={() => handleDelete(item.id, item.ingredient_name)}
+                              onClick={() => openDeleteModal(item.id, item.ingredient_name)}
                               className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all"
                               title="Delete"
                             >
@@ -303,6 +321,79 @@ export default function IngredientPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.show && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <FiAlertCircle size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Confirm Delete</h3>
+            </div>
+            
+            <p className="text-slate-600 mb-2">
+              Are you sure you want to delete <span className="font-semibold text-slate-900">"{deleteModal.name}"</span>?
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={closeDeleteModal}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success/Error Modal */}
+      {modal.show && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                modal.type === "success" ? "bg-green-100" : "bg-red-100"
+              }`}>
+                {modal.type === "success" ? (
+                  <FiCheckCircle size={24} className="text-green-600" />
+                ) : (
+                  <FiAlertCircle size={24} className="text-red-600" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                {modal.type === "success" ? "Success" : "Error"}
+              </h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">{modal.message}</p>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={closeModal}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  modal.type === "success"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

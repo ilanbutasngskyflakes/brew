@@ -1,6 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../../api/api";
+import Modal from "../../../../components/modals";
 import {
   FiPackage,
   FiX,
@@ -9,6 +11,7 @@ import {
   FiPlus,
   FiTrash2,
   FiCheckCircle,
+  FiSearch,
 } from "react-icons/fi";
 
 export default function Create({ formData = {}, isEditing }) {
@@ -26,6 +29,41 @@ export default function Create({ formData = {}, isEditing }) {
   ]);
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchQueries, setSearchQueries] = useState({});
+
+  // Modal state
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+    onConfirm: null,
+    confirmText: "OK",
+    showCancel: false,
+  });
+
+  const showModal = (
+    type,
+    title,
+    message,
+    onConfirm = null,
+    confirmText = "OK",
+    showCancel = false
+  ) => {
+    setModal({
+      isOpen: true,
+      type,
+      title,
+      message,
+      onConfirm,
+      confirmText,
+      showCancel,
+    });
+  };
+
+  const closeModal = () => {
+    setModal({ ...modal, isOpen: false });
+  };
 
   // Load categories and ingredients
   useEffect(() => {
@@ -37,7 +75,7 @@ export default function Create({ formData = {}, isEditing }) {
         const ingRes = await api.get("/ingredients");
         setIngredients(ingRes.data);
       } catch (err) {
-        console.error(err);
+        showModal("error", "Error", "Failed to load data. Please refresh the page.");
       }
     };
     loadData();
@@ -84,10 +122,10 @@ export default function Create({ formData = {}, isEditing }) {
       if (existingIndex === -1) {
         updated[variantIndex].ingredients.push({
           ingredient_id: ingredientId,
-          amount,
+          amount: amount || "",
         });
       } else {
-        updated[variantIndex].ingredients[existingIndex].amount = amount;
+        updated[variantIndex].ingredients[existingIndex].amount = amount || "";
       }
     } else {
       if (existingIndex !== -1) {
@@ -102,17 +140,47 @@ export default function Create({ formData = {}, isEditing }) {
     e.preventDefault();
     setVariants([
       ...variants,
-      { variant_name: "", price: 0, ingredients: [] },
+      { variant_name: "", price: "", ingredients: [] },
     ]);
   };
 
   const removeVariant = (index) => {
     if (variants.length === 1) {
-      alert("At least one variant is required");
+      showModal("warning", "Cannot Remove", "At least one variant is required.");
       return;
     }
-    const updated = variants.filter((_, i) => i !== index);
-    setVariants(updated);
+    
+    showModal(
+      "confirm",
+      "Remove Variant",
+      `Are you sure you want to remove Variant ${index + 1}?`,
+      () => {
+        const updated = variants.filter((_, i) => i !== index);
+        setVariants(updated);
+        
+        // Remove search query for this variant
+        const newSearchQueries = { ...searchQueries };
+        delete newSearchQueries[index];
+        setSearchQueries(newSearchQueries);
+      },
+      "Remove",
+      true
+    );
+  };
+
+  // Handle search query change
+  const handleSearchChange = (variantIndex, query) => {
+    setSearchQueries({ ...searchQueries, [variantIndex]: query });
+  };
+
+  // Filter ingredients based on search query
+  const getFilteredIngredients = (variantIndex) => {
+    const query = searchQueries[variantIndex] || "";
+    if (!query.trim()) return ingredients;
+    
+    return ingredients.filter((ing) =>
+      ing.ingredient_name.toLowerCase().includes(query.toLowerCase())
+    );
   };
 
   // Submit handler
@@ -120,12 +188,12 @@ export default function Create({ formData = {}, isEditing }) {
     e.preventDefault();
 
     if (!form.category_id || !form.product_name) {
-      alert("Category and Product Name are required");
+      showModal("warning", "Missing Fields", "Category and Product Name are required.");
       return;
     }
 
     if (variants.some((v) => !v.variant_name || !v.price)) {
-      alert("All variants must have a name and price");
+      showModal("warning", "Missing Fields", "All variants must have a name and price.");
       return;
     }
 
@@ -141,11 +209,13 @@ export default function Create({ formData = {}, isEditing }) {
       await api.post("/product/add", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("Product added successfully");
-      navigate("/dashboard/product");
+      
+      showModal("success", "Success", "Product added successfully!", () => {
+        navigate("/dashboard/product");
+      });
     } catch (err) {
       console.error("Error adding product:", err);
-      alert("Failed to add product");
+      showModal("error", "Error", "Failed to add product. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -154,6 +224,18 @@ export default function Create({ formData = {}, isEditing }) {
   return (
     <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
       <div className="max-w-6xl mx-auto">
+        {/* Modal */}
+        <Modal
+          isOpen={modal.isOpen}
+          onClose={closeModal}
+          type={modal.type}
+          title={modal.title}
+          message={modal.message}
+          onConfirm={modal.onConfirm}
+          confirmText={modal.confirmText}
+          showCancel={modal.showCancel}
+        />
+
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
@@ -380,70 +462,90 @@ export default function Create({ formData = {}, isEditing }) {
 
                   {/* Ingredients Section */}
                   <div className="border-t border-slate-200 pt-4">
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3">
-                      Select Ingredients
-                    </h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-slate-700">
+                        Select Ingredients
+                      </h4>
+                      {/* Search Bar */}
+                      <div className="relative w-64">
+                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                          type="text"
+                          placeholder="Search ingredients..."
+                          value={searchQueries[index] || ""}
+                          onChange={(e) => handleSearchChange(index, e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2">
-                      {ingredients.map((ing) => {
-                        const selected = variant.ingredients?.find(
-                          (i) => i.ingredient_id === ing.id
-                        );
-                        return (
-                          <div
-                            key={ing.id}
-                            className={`border rounded-lg p-3 transition-all ${
-                              selected
-                                ? "border-[#073dbe] bg-blue-50"
-                                : "border-slate-200 bg-white hover:border-slate-300"
-                            }`}
-                          >
-                            <label className="flex items-start gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={!!selected}
-                                onChange={(e) =>
-                                  handleIngredientChange(
-                                    index,
-                                    ing.id,
-                                    selected?.amount || 0,
-                                    e.target.checked
-                                  )
-                                }
-                                className="mt-0.5 w-4 h-4 text-[#073dbe] rounded focus:ring-2 focus:ring-blue-200"
-                                disabled={loading}
-                              />
-                              <div className="flex-1">
-                                <div className="font-medium text-slate-900 text-sm">
-                                  {ing.ingredient_name}
+                      {getFilteredIngredients(index).length > 0 ? (
+                        getFilteredIngredients(index).map((ing) => {
+                          const selected = variant.ingredients?.find(
+                            (i) => i.ingredient_id === ing.id
+                          );
+                          return (
+                            <div
+                              key={ing.id}
+                              className={`border rounded-lg p-3 transition-all ${
+                                selected
+                                  ? "border-[#073dbe] bg-blue-50"
+                                  : "border-slate-200 bg-white hover:border-slate-300"
+                              }`}
+                            >
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!selected}
+                                  onChange={(e) =>
+                                    handleIngredientChange(
+                                      index,
+                                      ing.id,
+                                      selected?.amount || "",
+                                      e.target.checked
+                                    )
+                                  }
+                                  className="mt-0.5 w-4 h-4 text-[#073dbe] rounded focus:ring-2 focus:ring-blue-200"
+                                  disabled={loading}
+                                />
+                                <div className="flex-1">
+                                  <div className="font-medium text-slate-900 text-sm">
+                                    {ing.ingredient_name}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    Available: {ing.quantity} {ing.unit}
+                                  </div>
+                                  {selected && (
+                                    <input
+                                      type="number"
+                                      placeholder={`Amount (${ing.unit})`}
+                                      value={selected.amount}
+                                      onChange={(e) =>
+                                        handleIngredientChange(
+                                          index,
+                                          ing.id,
+                                          e.target.value,
+                                          true
+                                        )
+                                      }
+                                      onWheel={(e) => e.target.blur()}
+                                      step="0.01"
+                                      min="0"
+                                      className="w-full mt-2 p-2 border border-[#073dbe] rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                                      disabled={loading}
+                                    />
+                                  )}
                                 </div>
-                                <div className="text-xs text-slate-500">
-                                  Available: {ing.quantity} {ing.unit}
-                                </div>
-                                {selected && (
-                                  <input
-                                    type="number"
-                                    placeholder={`Amount (${ing.unit})`}
-                                    value={selected.amount}
-                                    onChange={(e) =>
-                                      handleIngredientChange(
-                                        index,
-                                        ing.id,
-                                        Number(e.target.value),
-                                        true
-                                      )
-                                    }
-                                    onWheel={(e) => e.target.blur()}
-                                    step="0.01"
-                                    min="0"
-                                    className="w-full mt-2 p-2 border border-[#073dbe] rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                                    disabled={loading}
-                                  />
-                                )}
-                              </div>
-                            </label>
-                          </div>
-                        );
-                      })}
+                              </label>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="col-span-full text-center py-8 text-slate-500">
+                          <p className="text-sm">No ingredients found</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

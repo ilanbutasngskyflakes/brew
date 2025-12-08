@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
-import { FiClock, FiEdit, FiShoppingCart, FiCalendar, FiArrowLeft } from "react-icons/fi";
+import { FiClock, FiEdit, FiShoppingCart, FiCalendar, FiArrowLeft, FiPrinter } from "react-icons/fi";
 
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState([]);
@@ -37,6 +37,81 @@ export default function OrderHistoryPage() {
     if (confirmEdit) {
       navigate("/cashier", { state: { editOrder: order } });
     }
+  };
+
+  const handlePrintReceipt = (order) => {
+    const receiptWindow = window.open("", "PRINT", "height=600,width=400");
+    
+    receiptWindow.document.write(`
+      <html>
+      <head>
+        <title>Receipt</title>
+        <style>
+          body { 
+            font-family: monospace; 
+            padding: 20px; 
+            width: 80mm;
+            margin: 0 auto;
+          }
+          h2, h3 { text-align: center; margin: 5px 0; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .flex { display: flex; justify-content: space-between; margin: 3px 0; }
+          p { margin: 3px 0; font-size: 14px; }
+          .bold { font-weight: bold; }
+          .item-row { margin: 5px 0; }
+        </style>
+      </head>
+      <body>
+        <h2>Barcelo Cafe</h2>
+        <p style="text-align:center;">La Consolacion College - Galo-Gatuslao- Rizal Streets, Bacolod CIty, Philippines </p>
+        <h3 style="text-align:center;">Official Receipt</h3>
+        <div class="divider"></div>
+
+        <p style="text-align:center; margin: 8px 0;">
+          Order #${order.id}<br/>
+          ${new Date(order.created_at).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </p>
+
+        ${order.discount > 0 
+          ? '<p style="color:green;font-weight:bold;margin:10px 0;">Senior/PWD Discount Applied (-₱' + Number(order.discount).toFixed(2) + ')</p><div class="divider"></div>'
+          : ""
+        }
+
+        <div>
+          <div class="flex bold">
+            <span>Product</span>
+            <span>Price</span>
+          </div>
+          <div class="divider"></div>
+          ${order.items?.map(item => 
+            `<div class="flex item-row">
+              <span>${item.product_name} x ${item.quantity}<br/><span style="font-size:12px;margin-left:10px;">${item.variant_name}</span></span>
+              <span style="white-space:nowrap;">₱${Number(item.subtotal).toFixed(2)}</span>
+            </div>`
+          ).join('')}
+        </div>
+
+        <div class="divider"></div>
+        <div class="flex bold" style="font-size:16px;"><span>Total</span><span>₱${Number(order.total).toFixed(2)}</span></div>
+        <div class="flex"><span>Cash</span><span>₱${Number(order.total).toFixed(2)}</span></div>
+        <div class="flex"><span>Change</span><span>₱0.00</span></div>
+        <div class="divider"></div>
+        
+        <p style="text-align:center;margin-top:15px;">Thank you for your order!</p>
+        <p style="text-align:center;">Reference No. BARCELO${String(order.id).padStart(3, '0')}</p>
+      </body>
+      </html>
+    `);
+    
+    receiptWindow.document.close();
+    receiptWindow.focus();
+    receiptWindow.print();
   };
 
   const filteredOrders = orders
@@ -246,7 +321,14 @@ export default function OrderHistoryPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="lg:w-32 flex lg:flex-col gap-2">
+                  <div className="flex lg:flex-col gap-2">
+                    <button
+                      onClick={() => handlePrintReceipt(order)}
+                      className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      <FiPrinter size={16} />
+                      Print
+                    </button>
                     <button
                       onClick={() => handleEditOrder(order)}
                       className="flex-1 lg:flex-none bg-[#073dbe] hover:bg-[#052d99] text-white py-2 px-4 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2"

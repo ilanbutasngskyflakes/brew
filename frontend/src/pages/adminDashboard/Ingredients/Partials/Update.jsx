@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../../../api/api";
-import { FiPackage, FiX, FiTrash2, FiSave } from "react-icons/fi";
+import { FiPackage, FiX, FiTrash2, FiSave, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 
 export default function Update() {
   const { id } = useParams();
@@ -14,6 +15,8 @@ export default function Update() {
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [modal, setModal] = useState({ show: false, type: "", message: "" });
+  const [deleteModal, setDeleteModal] = useState(false);
 
   useEffect(() => {
     const fetchIngredient = async () => {
@@ -25,9 +28,8 @@ export default function Update() {
           unit: res.data.unit,
         });
       } catch (error) {
-        console.error("Error fetching ingredient:", error);
-        alert("Failed to fetch ingredient data");
-        navigate("/dashboard/ingredients");
+        showModal("error", "Failed to fetch ingredient data");
+        setTimeout(() => navigate("/dashboard/ingredients"), 2000);
       } finally {
         setLoading(false);
       }
@@ -35,6 +37,35 @@ export default function Update() {
 
     fetchIngredient();
   }, [id, navigate]);
+
+  // Unit conversion functions
+  const convertToBaseUnit = (quantity, unit) => {
+    const value = parseFloat(quantity);
+
+    // Convert liquids to ml
+    if (unit === "L") {
+      return { quantity: value * 1000, unit: "ml" };
+    }
+
+    // Convert solids to g
+    if (unit === "kg") {
+      return { quantity: value * 1000, unit: "g" };
+    }
+
+    // Return as-is for base units (ml, g, pcs)
+    return { quantity: value, unit };
+  };
+
+  const showModal = (type, message) => {
+    setModal({ show: true, type, message });
+  };
+
+  const closeModal = () => {
+    setModal({ show: false, type: "", message: "" });
+    if (modal.type === "success") {
+      navigate("/dashboard/ingredients");
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,28 +77,32 @@ export default function Update() {
 
     try {
       setSubmitting(true);
-      await api.put(`/ingredients/${id}`, formData);
-      alert("Ingredient updated successfully");
-      navigate("/dashboard/ingredients");
+
+      // Convert to base units before submitting
+      const converted = convertToBaseUnit(formData.quantity, formData.unit);
+      const dataToSubmit = {
+        ingredient_name: formData.ingredient_name,
+        quantity: converted.quantity,
+        unit: converted.unit,
+      };
+
+      await api.put(`/ingredients/${id}`, dataToSubmit);
+      showModal("success", "Ingredient updated successfully!");
     } catch (error) {
-      console.error(error);
-      alert("Error updating ingredient");
+      showModal("error", error.response?.data?.message || "Error updating ingredient. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this ingredient? This action cannot be undone.")) return;
-
     try {
       setSubmitting(true);
+      setDeleteModal(false);
       await api.delete(`/ingredients/${id}`);
-      alert("Ingredient deleted successfully");
-      navigate("/dashboard/ingredients");
+      showModal("success", "Ingredient deleted successfully!");
     } catch (error) {
-      console.error(error);
-      alert("Error deleting ingredient");
+      showModal("error", error.response?.data?.message || "Error deleting ingredient. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -164,12 +199,21 @@ export default function Update() {
                   disabled={submitting}
                 >
                   <option value="ml">ml (milliliters)</option>
+                  <option value="L">L (liters)</option>
                   <option value="g">g (grams)</option>
                   <option value="kg">kg (kilograms)</option>
-                  <option value="L">L (liters)</option>
                   <option value="pcs">pcs (pieces)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-slate-700">
+                <span className="font-semibold text-[#073dbe]">Tip:</span> Liters
+                will be automatically converted to ml, and kilograms to grams for
+                consistent tracking.
+              </p>
             </div>
 
             {/* Buttons */}
@@ -193,7 +237,7 @@ export default function Update() {
               </button>
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setDeleteModal(true)}
                 className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 rounded-lg transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={submitting}
               >
@@ -204,6 +248,76 @@ export default function Update() {
           </form>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <FiAlertCircle size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Confirm Delete</h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete this ingredient? This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success/Error Modal */}
+      {modal.show && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                modal.type === "success" ? "bg-green-100" : "bg-red-100"
+              }`}>
+                {modal.type === "success" ? (
+                  <FiCheckCircle size={24} className="text-green-600" />
+                ) : (
+                  <FiAlertCircle size={24} className="text-red-600" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                {modal.type === "success" ? "Success" : "Error"}
+              </h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">{modal.message}</p>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={closeModal}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  modal.type === "success"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         input[type="number"]::-webkit-inner-spin-button,

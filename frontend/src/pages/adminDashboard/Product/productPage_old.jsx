@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/set-state-in-effect */
 // // //   // import { useEffect, useState } from "react";
 // // //   // import ProductForm from "./productForm";
 // // //   // import api from "../../../api/api";

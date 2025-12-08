@@ -1,10 +1,12 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, Box, Archive, FileText, Settings, LogOut, ChevronRight } from "lucide-react";
+import { Menu, X, Home, Box, Archive, FileText, Settings, LogOut, ChevronRight, AlertCircle } from "lucide-react";
+import { useState } from "react";
 
 export default function Sidebar({ isOpen, setIsOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user"));
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   if (!user || user.role !== "admin") {
     navigate("/login");
@@ -20,11 +22,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   ];
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      navigate("/login");
-    }
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   return (
@@ -45,16 +45,26 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           isOpen ? "w-64" : "w-64 lg:w-20"
         } bg-white border-r border-slate-200 flex flex-col transition-all duration-300 shadow-lg z-50 lg:z-30`}
       >
-        {/* Toggle Button */}
-        <div className="flex items-center justify-end p-4 border-b border-slate-200 min-h-[64px] flex-shrink-0">
-          <button
-            className="p-2 hover:bg-slate-100 text-slate-700 rounded-lg transition-all"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle menu"
-          >
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+        {/* Logo Section - Now clickable to toggle sidebar */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center justify-center p-4 border-b border-slate-200 min-h-[64px] flex-shrink-0 hover:bg-slate-50 transition-colors cursor-pointer"
+          aria-label="Toggle sidebar"
+        >
+          {isOpen ? (
+            <img 
+              src="/logo.png" 
+              alt="Barcelo Cafe Logo" 
+              className="h-12 w-auto object-contain"
+            />
+          ) : (
+            <img 
+              src="/logo.png" 
+              alt="Barcelo Cafe Logo" 
+              className="h-10 w-10 object-contain rounded-full"
+            />
+          )}
+        </button>
 
         {/* User Info (when expanded) */}
         {isOpen && (
@@ -123,7 +133,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         <div className="flex-shrink-0 border-t border-slate-200">
           {/* Logout Button */}
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutModal(true)}
             className={`flex items-center gap-3 m-3 p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all hover:shadow-md group w-[calc(100%-1.5rem)]
             ${!isOpen ? "justify-center" : ""}`}
             title={!isOpen ? "Logout" : ""}
@@ -151,6 +161,42 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
       {/* Spacer for main content */}
       <div className={`${isOpen ? "w-64" : "w-0 lg:w-20"} flex-shrink-0 transition-all duration-300`} />
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Confirm Logout</h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to logout? You will need to sign in again to access your account.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
