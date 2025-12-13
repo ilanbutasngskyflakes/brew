@@ -357,8 +357,8 @@ export default function UserManagement() {
 
         {/* Change Password Modal */}
         {showPasswordModal && passwordChange.id && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn p-4 z-50">
+            <div className="bg-white rounded-lg w-full max-w-md shadow-2xl">
               <div className="bg-[#073dbe] px-4 py-3 rounded-t-lg">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">

@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 export const getUsers = async (req, res) => {
   try {
     const [rows] = await db.execute(
-      "SELECT id, name, first_name, last_name, role FROM tbl_users"
+      "SELECT id, name, first_name, last_name, role FROM tbl_users WHERE is_deleted = 0"
     );
     res.json(rows);
   } catch (error) {
@@ -81,8 +81,9 @@ export const verifyUser = async (req, res) => {
       [name]
     );
 
+    // User not found - specific message
     if (rows.length === 0) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(404).json({ message: "Username not found. Please check your username." });
     }
 
     const user = rows[0];
@@ -93,8 +94,9 @@ export const verifyUser = async (req, res) => {
         ? await bcrypt.compare(password, stored)
         : password === stored;
 
+    // Password incorrect - specific message
     if (!match) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Incorrect password. Please try again." });
     }
 
     delete user.password;
@@ -160,7 +162,7 @@ export const deleteUser = async (req, res) => {
     const id = req.params.id || req.body.id;
     if (!id) return res.status(400).json({ message: "User id is required" });
 
-    const [result] = await db.execute("DELETE FROM tbl_users WHERE id = ?", [
+    const [result] = await db.execute("UPDATE FROM tbl_users WHERE id = ?", [
       id,
     ]);
 

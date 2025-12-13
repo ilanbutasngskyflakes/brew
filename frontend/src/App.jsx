@@ -38,15 +38,17 @@ function App() {
           <Route path="ingredients" element={<IngredientsDashboard/>}/>
           <Route path="ingredients/new" element={<CreateIngredientsDashboard/>}/>
           <Route path="ingredients/:id/edit" element={<UpdateIngredientsDashboard/>}/>
-         
+        {/* <Route path="cashier" element={<Cashier />} />
+         <Route path="cashier/order/" element={<OrderHistory />} />
+        <Route path="cashier/order/update" element={<OrderHistory />} /> */}
         </Route>
 
-        
+        <Route path="cashier" element={<Cashier />} />
+         <Route path="cashier/order/" element={<OrderHistory />} />
+        <Route path="cashier/order/update" element={<OrderHistory />} />
 
         {/* Cashier */}
-        <Route path="/cashier" element={<Cashier />} />
-        <Route path="/cashier/order/" element={<OrderHistory />} />
-        <Route path="/cashier/order/update" element={<OrderHistory />} />
+        
 
       </Routes>
     </BrowserRouter>

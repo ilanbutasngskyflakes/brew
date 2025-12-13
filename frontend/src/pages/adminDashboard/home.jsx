@@ -29,6 +29,12 @@ export default function Home() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
+    if (!user || user.role !== "admin") {
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
     loadDashboardData();
     
     const interval = setInterval(() => {

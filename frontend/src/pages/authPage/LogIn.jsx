@@ -1,90 +1,9 @@
-// import { useState } from "react";
-// import api from "../../api/api";
-// import { Link, useNavigate } from "react-router-dom";
 
-// export default function Login() {
-//   const navigate = useNavigate();
-
-//   const [form, setForm] = useState({
-//     name: "",
-//     password: "",
-//   });
-
-//   const [message, setMessage] = useState("");
-
-//   const handleChange = (e) => {
-//     setForm({ ...form, [e.target.name]: e.target.value });
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     setMessage("");
-
-//     try {
-//       const res = await api.post("http://localhost:8080/user/auth", form);
-//       localStorage.setItem("user", JSON.stringify(res.data.user));
-
-//       setMessage("Login successful!");
-//       setTimeout(() => navigate("/dashboard"), 1000);
-//     } catch (err) {
-//       setMessage(err.response?.data?.message || "Invalid credentials");
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-//       <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg">
-//         <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
-
-//         {message && (
-//           <p className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded">
-//             {message}
-//           </p>
-//         )}
-
-//         <form onSubmit={handleSubmit} className="space-y-4">
-
-//           <input
-//             type="text"
-//             name="name"
-//             placeholder="Username"
-//             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400"
-//             value={form.name}
-//             onChange={handleChange}
-//             required
-//           />
-
-//           <input
-//             type="password"
-//             name="password"
-//             placeholder="Password"
-//             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400"
-//             value={form.password}
-//             onChange={handleChange}
-//             required
-//           />
-
-//           <button
-//             type="submit"
-//             className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition"
-//           >
-//             Login
-//           </button>
-//         </form>
-
-//         <p className="text-center mt-4 text-sm">
-//           Don’t have an account?{" "}
-//           <Link to="/signup" className="text-blue-600 hover:underline">
-//     Sign Up
-//   </Link>
-//         </p>
-//       </div>
-//     </div>
-//   );
-// }
 import { useState } from "react";
 import api from "../../api/api";
 import { Link, useNavigate } from "react-router-dom";
+import Modal from "../../components/modals";
+import { FiUser, FiLock, FiLogIn, FiEye, FiEyeOff } from "react-icons/fi";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -94,89 +13,181 @@ export default function Login() {
     password: "",
   });
 
-  const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Modal state
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+    onConfirm: null,
+    confirmText: "OK",
+    showCancel: false,
+  });
+
+  const showModal = (
+    type,
+    title,
+    message,
+    onConfirm = null,
+    confirmText = "OK",
+    showCancel = false
+  ) => {
+    setModal({
+      isOpen: true,
+      type,
+      title,
+      message,
+      onConfirm,
+      confirmText,
+      showCancel,
+    });
+  };
+
+  const closeModal = () => {
+    setModal({ ...modal, isOpen: false });
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setMessage("");
+    e.preventDefault();
 
-  try {
-    const res = await api.post("http://localhost:8080/user/auth", form);
-    const user = res.data.user;
+    if (!form.name.trim() || !form.password.trim()) {
+      showModal("warning", "Missing Fields", "Please enter both username and password.");
+      return;
+    }
 
-    // Save user in localStorage
-    localStorage.setItem("user", JSON.stringify(user));
+    try {
+      setLoading(true);
+      const res = await api.post("http://localhost:8080/user/auth", form);
+      const user = res.data.user;
 
-    setMessage("Login successful!");
+      // Save user in localStorage
+      localStorage.setItem("user", JSON.stringify(user));
 
-    // Redirect based on role
-    setTimeout(() => {
-      if (user.role === "admin") {
-        navigate("/dashboard");
+      showModal("success", "Login Successful", `Welcome back, ${user.name}!`, () => {
+        if (user.role === "admin") {
+          navigate("/dashboard");
+        } else {
+          navigate("/cashier");
+        }
+      });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || "";
+      
+      // Specific error messages
+      if (errorMessage.toLowerCase().includes("username") || errorMessage.toLowerCase().includes("user not found")) {
+        showModal("error", "Username Not Found", "The username you entered does not exist. Please check and try again.");
+      } else if (errorMessage.toLowerCase().includes("password")) {
+        showModal("error", "Incorrect Password", "The password you entered is incorrect. Please try again.");
       } else {
-        navigate("/cashier"); // cashier page
+        showModal("error", "Login Failed", errorMessage || "Invalid credentials. Please try again.");
       }
-    }, 500);
-  } catch (err) {
-    setMessage(err.response?.data?.message || "Invalid credentials");
-  }
-};
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0441b1] to-blue-700 px-4">
-      <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl border-t-4 border-[#0441b1]">
-        <h2 className="text-3xl font-extrabold text-[#0441b1] text-center mb-6">Barcelo Cafe Login</h2>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      {/* Modal */}
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        onConfirm={modal.onConfirm}
+        confirmText={modal.confirmText}
+        showCancel={modal.showCancel}
+      />
 
-        {message && (
-          <p
-            className={`${
-              message === "Login successful!"
-                ? "bg-green-100 border-l-4 border-green-500 text-green-700"
-                : "bg-red-100 border-l-4 border-red-500 text-red-700"
-            } p-3 mb-4 rounded transition`}
-          >
-            {message}
-          </p>
-        )}
+      <div className="bg-white w-full max-w-md p-8 rounded-lg shadow-lg border border-slate-200">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="bg-[#073dbe] w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <FiLogIn className="text-white text-2xl" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Welcome Back</h2>
+          <p className="text-slate-600 text-sm mt-2">Sign in to your account</p>
+        </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          <input
-            type="text"
-            name="name"
-            placeholder="Username"
-            className="w-full p-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0441b1] transition"
-            value={form.name}
-            onChange={handleChange}
-            required
-          />
+          {/* Username */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Username
+            </label>
+            <div className="relative">
+              <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                name="name"
+                placeholder="Enter your username"
+                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                value={form.name}
+                onChange={handleChange}
+                disabled={loading}
+                required
+              />
+            </div>
+          </div>
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            className="w-full p-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0441b1] transition"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Enter your password"
+                className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                value={form.password}
+                onChange={handleChange}
+                disabled={loading}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                disabled={loading}
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
+          </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-[#0441b1] text-white p-4 rounded-xl hover:bg-blue-900 font-semibold transition"
+            className="w-full bg-[#073dbe] hover:bg-[#052d99] text-white py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            disabled={loading}
           >
-            Login
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Signing in...
+              </>
+            ) : (
+              <>
+                <FiLogIn size={18} />
+                Sign In
+              </>
+            )}
           </button>
         </form>
 
-        <p className="text-center mt-5 text-sm text-gray-600">
-          Don’t have an account?{" "}
-          <Link to="/signup" className="text-[#0441b1] font-semibold hover:underline">
-            Sign Up
-          </Link>
-        </p>
+        
       </div>
     </div>
   );

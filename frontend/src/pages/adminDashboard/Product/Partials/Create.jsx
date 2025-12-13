@@ -31,6 +31,24 @@ export default function Create({ formData = {}, isEditing }) {
   const [loading, setLoading] = useState(false);
   const [searchQueries, setSearchQueries] = useState({});
 
+  // Add Ingredient Modal State
+  const [showAddIngredient, setShowAddIngredient] = useState(false);
+  const [newIngredient, setNewIngredient] = useState({
+    ingredient_name: "",
+    quantity: "",
+    unit: "g",
+  });
+  const [addingIngredient, setAddingIngredient] = useState(false);
+
+  // Unit options
+  const unitOptions = [
+    { value: "g", label: "Grams (g)" },
+    { value: "kg", label: "Kilograms (kg)" },
+    { value: "ml", label: "Milliliters (ml)" },
+    { value: "l", label: "Liters (l)" },
+    { value: "pcs", label: "Pieces (pcs)" },
+  ];
+
   // Modal state
   const [modal, setModal] = useState({
     isOpen: false,
@@ -65,15 +83,41 @@ export default function Create({ formData = {}, isEditing }) {
     setModal({ ...modal, isOpen: false });
   };
 
+  // Convert units to base units (g for weight, ml for volume)
+  const convertToBaseUnit = (quantity, unit) => {
+    const value = parseFloat(quantity);
+    if (isNaN(value)) return { quantity: 0, unit };
+
+    switch (unit) {
+      case "kg":
+        return { quantity: value * 1000, unit: "g" };
+      case "l":
+        return { quantity: value * 1000, unit: "ml" };
+      case "pcs":
+        return { quantity: value * 60, unit: "g" }; // Assuming 1 pcs = 60g
+      case "g":
+      case "ml":
+      default:
+        return { quantity: value, unit };
+    }
+  };
+
   // Load categories and ingredients
+  const loadIngredients = async () => {
+    try {
+      const ingRes = await api.get("/ingredients");
+      setIngredients(ingRes.data);
+    } catch (err) {
+      showModal("error", "Error", "Failed to load ingredients.");
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
         const catRes = await api.get("/category");
         setCategories(catRes.data);
-
-        const ingRes = await api.get("/ingredients");
-        setIngredients(ingRes.data);
+        await loadIngredients();
       } catch (err) {
         showModal("error", "Error", "Failed to load data. Please refresh the page.");
       }
@@ -183,6 +227,38 @@ export default function Create({ formData = {}, isEditing }) {
     );
   };
 
+  // Add new ingredient
+  const handleAddIngredient = async () => {
+    if (!newIngredient.ingredient_name || !newIngredient.quantity || !newIngredient.unit) {
+      showModal("warning", "Missing Fields", "All ingredient fields are required.");
+      return;
+    }
+
+    try {
+      setAddingIngredient(true);
+      
+      // Convert to base unit before sending
+      const converted = convertToBaseUnit(newIngredient.quantity, newIngredient.unit);
+      
+      await api.post("/ingredients/add", {
+        ingredient_name: newIngredient.ingredient_name,
+        quantity: converted.quantity,
+        unit: converted.unit,
+      });
+      
+      showModal("success", "Success", `Ingredient added successfully! (${converted.quantity} ${converted.unit})`);
+      setShowAddIngredient(false);
+      setNewIngredient({ ingredient_name: "", quantity: "", unit: "g" });
+      
+      // Reload ingredients
+      await loadIngredients();
+    } catch (err) {
+      showModal("error", "Error", err.response?.data?.message || "Failed to add ingredient. Please try again.");
+    } finally {
+      setAddingIngredient(false);
+    }
+  };
+
   // Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -235,6 +311,142 @@ export default function Create({ formData = {}, isEditing }) {
           confirmText={modal.confirmText}
           showCancel={modal.showCancel}
         />
+
+        {/* Add Ingredient Modal */}
+        {showAddIngredient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full animate-slideUp">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900">Add New Ingredient</h3>
+                <button
+                  onClick={() => {
+                    setShowAddIngredient(false);
+                    setNewIngredient({ ingredient_name: "", quantity: "", unit: "g" });
+                  }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  disabled={addingIngredient}
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {/* Ingredient Name */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Ingredient Name <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Coffee Beans, Milk, Sugar"
+                    value={newIngredient.ingredient_name}
+                    onChange={(e) =>
+                      setNewIngredient({ ...newIngredient, ingredient_name: e.target.value })
+                    }
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                    disabled={addingIngredient}
+                  />
+                </div>
+
+                {/* Quantity & Unit */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Quantity <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g., 1000"
+                      value={newIngredient.quantity}
+                      onChange={(e) =>
+                        setNewIngredient({ ...newIngredient, quantity: e.target.value })
+                      }
+                      onWheel={(e) => e.target.blur()}
+                      step="0.01"
+                      min="0"
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                      disabled={addingIngredient}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Unit <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      value={newIngredient.unit}
+                      onChange={(e) =>
+                        setNewIngredient({ ...newIngredient, unit: e.target.value })
+                      }
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none bg-white cursor-pointer"
+                      disabled={addingIngredient}
+                    >
+                      {unitOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Conversion Preview */}
+                {newIngredient.quantity && newIngredient.unit && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-900 mb-1">Conversion Preview:</p>
+                    <p className="text-sm text-blue-700">
+                      {newIngredient.quantity} {newIngredient.unit} = {" "}
+                      <span className="font-bold">
+                        {convertToBaseUnit(newIngredient.quantity, newIngredient.unit).quantity}{" "}
+                        {convertToBaseUnit(newIngredient.quantity, newIngredient.unit).unit}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-slate-700">
+                    <span className="font-semibold text-[#073dbe]">Tip:</span> Units will be automatically converted (kg→g, l→ml, pcs→60g) for consistent tracking.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 p-4 border-t border-slate-200">
+                <button
+                  onClick={() => {
+                    setShowAddIngredient(false);
+                    setNewIngredient({ ingredient_name: "", quantity: "", unit: "g" });
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-all font-medium text-sm"
+                  disabled={addingIngredient}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddIngredient}
+                  className="flex-1 px-4 py-2 bg-[#073dbe] hover:bg-[#052d99] text-white rounded-lg transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={addingIngredient}
+                >
+                  {addingIngredient ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <FiPlus size={16} />
+                      Add Ingredient
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-6">
@@ -379,19 +591,30 @@ export default function Create({ formData = {}, isEditing }) {
 
           {/* Variants Card */}
           <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h2 className="text-lg font-bold text-slate-900">
                 Product Variants
               </h2>
-              <button
-                type="button"
-                onClick={addVariant}
-                className="bg-[#073dbe] hover:bg-[#052d99] text-white px-3 py-2 rounded-lg transition-all font-medium flex items-center gap-2 text-sm"
-                disabled={loading}
-              >
-                <FiPlus size={16} />
-                Add Variant
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddIngredient(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-all font-medium flex items-center gap-2 text-sm"
+                  disabled={loading}
+                >
+                  <FiPlus size={16} />
+                  Add Ingredient
+                </button>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="bg-[#073dbe] hover:bg-[#052d99] text-white px-3 py-2 rounded-lg transition-all font-medium flex items-center gap-2 text-sm"
+                  disabled={loading}
+                >
+                  <FiPlus size={16} />
+                  Add Variant
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -592,6 +815,26 @@ export default function Create({ formData = {}, isEditing }) {
         }
         input[type="number"] {
           -moz-appearance: textfield;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
         }
       `}</style>
     </div>

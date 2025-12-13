@@ -657,7 +657,7 @@ export default function SalesReportPage() {
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Order ID</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Date & Time</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Items</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Discount</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 uppercase">Discount</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total</th>
                   </tr>
                 </thead>
@@ -673,13 +673,13 @@ export default function SalesReportPage() {
                       <td className="px-4 py-3 text-slate-600 text-sm">
                         {order.items?.length || 0} items
                       </td>
-                      <td className="px-4 py-3 text-right text-sm">
-                        {order.discount > 0 ? (
+                      <td className="px-4 py-3 text-center text-sm">
+                        {order.discounted !== 'none' ? (
                           <span className="text-red-600 font-semibold">
-                            ₱{Number(order.discount).toFixed(2)}
+                            ₱5
                           </span>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-400">Regular</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-slate-900 text-sm">

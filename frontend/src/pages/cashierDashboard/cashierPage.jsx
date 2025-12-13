@@ -31,6 +31,13 @@ export default function CashierPage() {
   const [orderType, setOrderType] = useState("dine-in");
   const navigate = useNavigate();
   const location = useLocation();
+  const user = JSON.parse(localStorage.getItem("user"));
+  
+   useEffect(() => {
+    if (!user || (user.role !== "admin" && user.role !== "cashier")) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   const loadOrderForEdit = (order) => {
     if (!order || !order.items || order.items.length === 0) {
