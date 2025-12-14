@@ -321,7 +321,6 @@ export default function CashierPage() {
     }
 
     const change = paid - total;
-    const user = JSON.parse(localStorage.getItem("user"));
     const cashier_id = user?.id;
 
     if (!cashier_id) {
@@ -336,6 +335,8 @@ export default function CashierPage() {
         status: "completed",
         discount_type: discountType,
         discount: calculateDiscount(),
+        paid: parseFloat(paid.toFixed(2)),
+        change: parseFloat(change.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         items: cart.map(item => {
           const toppingPrice = item.topping_id ? Number(getToppingById(item.topping_id)?.price || 0) : 0;
@@ -360,7 +361,8 @@ export default function CashierPage() {
         discount_type: discountType,
         paid: paid,
         change: change,
-        order_type: orderType
+        order_type: orderType,
+        cashier_name: user?.name || "Cashier"
       };
 
       if (editingOrderId) {
@@ -386,12 +388,18 @@ export default function CashierPage() {
     }
   };
 
-  const printReceipt = (order, orderId, change, cartItems) => {
+  const printReceipt = (order, orderId, _change, cartItems) => {
     const isDiscounted = order.discount > 0;
     const safeTotal = Number(order.total || 0);
     const safeDiscount = Number(order.discount || 0);
-    const safeChange = Number(change ?? 0);
-    const safePaid = Number(order.paid || 0) || (safeTotal + safeChange);
+
+    // Use order.paid and order.change, fallback if missing
+    const safePaid = order.paid !== undefined && order.paid !== null
+      ? Number(order.paid)
+      : safeTotal;
+    const safeChange = order.change !== undefined && order.change !== null
+      ? Number(order.change)
+      : 0;
 
     const receiptWindow = window.open("", "_blank", "height=600,width=400");
     if (!receiptWindow) {
@@ -422,6 +430,7 @@ export default function CashierPage() {
           .footer { text-align: center; margin-top: 15px; font-size: 10px; }
           .discount-note { text-align: center; font-weight: bold; margin: 10px 0; }
           .order-type { text-align: center; font-weight: bold; margin: 10px 0; text-transform: uppercase; }
+          .info-row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; }
         </style>
       </head>
       <body>
@@ -430,8 +439,7 @@ export default function CashierPage() {
           <div>La Consolacion College</div>
           <div>Galo- Gatuslao- Rizal Streets,</div>
           <div>Bacolod City, Philippines, 6100</div>
-          <div>Contact: (034) 434 9661</div>
-          <div>Email: lccbpresident@lccbonline.edu.ph</div>
+          <div>Contact: 1234567890</div>
         </div>
         <div class="divider"></div>
         <div style="text-align: center; font-weight: bold; margin: 10px 0;">OFFICIAL RECEIPT</div>
@@ -439,8 +447,9 @@ export default function CashierPage() {
         ${isDiscounted ? `<div class="discount-note">${order.discount_type === 'senior' ? 'SENIOR CITIZEN' : 'PWD'} DISCOUNT APPLIED (-₱${safeDiscount.toFixed(2)})</div>` : ''}
         <div class="divider"></div>
         <div style="font-size: 11px; margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between;"><span>Date:</span><span>${new Date().toLocaleString()}</span></div>
-          <div style="display: flex; justify-content: space-between;"><span>Order #:</span><span>${orderId}</span></div>
+          <div class="info-row"><span>Date:</span><span>${new Date().toLocaleString()}</span></div>
+          <div class="info-row"><span>Order #:</span><span>${orderId}</span></div>
+          <div class="info-row"><span>Served by:</span><span>${order.cashier_name || 'Cashier'}</span></div>
         </div>
         <div class="divider"></div>
         <div style="font-weight: bold; margin-bottom: 5px; font-size: 11px;">

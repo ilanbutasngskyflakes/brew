@@ -2,21 +2,30 @@ const db = require("../config/db.js");
 
 // CREATE ORDER with ingredient deduction
 const createOrder = async (req, res) => {
-  const { cashier_id, order_type, status, total, items, discount_type } = req.body;
+  const { cashier_id, order_type, status, total, items, discount_type, discount, paid, change } = req.body;
 
   if (!cashier_id || total === undefined || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ message: "Missing required fields: cashier_id, total, items" });
   }
 
   let conn;
-  try {
+  try { 
     conn = await db.getConnection();
     await conn.beginTransaction();
 
     // 1️⃣ Insert order
     const [orderResult] = await conn.execute(
-      "INSERT INTO tbl_orders (cashier_id, order_type, status, total, discounted) VALUES (?, ?, ?, ?, ?)",
-      [cashier_id, order_type || "dine-in", status || "completed", Number(total), discount_type]
+      "INSERT INTO tbl_orders (cashier_id, order_type, status, total, discounted, discount, paid, `change`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        cashier_id,
+        order_type || "dine-in",
+        status || "completed",
+        Number(total),
+        discount_type || null,
+        discount ? Number(discount) : 0,
+        paid ? Number(paid) : Number(total),
+        change ? Number(change) : 0
+      ]
     );
 
     const order_id = orderResult.insertId;

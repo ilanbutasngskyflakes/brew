@@ -41,6 +41,14 @@ export default function SalesReportPage() {
     setModal({ show: false, type: "", message: "" });
   };
 
+  // Calculate discount amount based on discounted type
+  const getDiscountAmount = (order) => {
+    if (order.discounted && order.discounted !== 'none') {
+      return 5; // ₱5 discount for student, senior, pwd
+    }
+    return 0;
+  };
+
   const filterOrdersByPeriod = () => {
     const now = new Date();
     
@@ -78,7 +86,7 @@ export default function SalesReportPage() {
   const calculateStats = (filteredOrders) => {
     const totalSales = filteredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const totalOrders = filteredOrders.length;
-    const totalDiscount = filteredOrders.reduce((sum, order) => sum + Number(order.discount || 0), 0);
+    const totalDiscount = filteredOrders.reduce((sum, order) => sum + getDiscountAmount(order), 0);
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     const productSales = {};
@@ -161,15 +169,15 @@ export default function SalesReportPage() {
         ...stats.topProducts.map(p => [p.product, p.variant, p.quantity, `₱${p.revenue.toFixed(2)}`]),
         [],
         ['Order Details'],
-        ['Order ID', 'Date', 'Total', 'Discount', 'Status', 'Items']
+        ['Order ID', 'Date', 'Discount Type', 'Discount Amount', 'Total', 'Items']
       ];
 
       const orderData = filteredOrders.map(order => [
         order.id,
         new Date(order.created_at).toLocaleString(),
+        order.discounted !== 'none' ? order.discounted.toUpperCase() : 'Regular',
+        getDiscountAmount(order) > 0 ? `₱${getDiscountAmount(order).toFixed(2)}` : '-',
         `₱${Number(order.total).toFixed(2)}`,
-        `₱${Number(order.discount || 0).toFixed(2)}`,
-        order.status,
         order.items?.length || 0
       ]);
 
@@ -296,6 +304,16 @@ export default function SalesReportPage() {
             border-radius: 3px;
             font-size: 9px;
           }
+          .discount-badge {
+            display: inline-block;
+            background: #ef4444;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+          }
           .footer {
             text-align: center;
             margin-top: 20px;
@@ -390,7 +408,7 @@ export default function SalesReportPage() {
                 <th style="width: 60px;">ID</th>
                 <th>Date & Time</th>
                 <th style="text-align: center; width: 50px;">Items</th>
-                <th style="text-align: right; width: 70px;">Discount</th>
+                <th style="text-align: center; width: 80px;">Discount</th>
                 <th style="text-align: right; width: 80px;">Total</th>
               </tr>
             </thead>
@@ -400,7 +418,11 @@ export default function SalesReportPage() {
                   <td style="font-weight: bold; color: #073dbe;">#${order.id}</td>
                   <td>${new Date(order.created_at).toLocaleString()}</td>
                   <td style="text-align: center;">${order.items?.length || 0}</td>
-                  <td style="text-align: right;">${order.discount > 0 ? `₱${Number(order.discount).toFixed(2)}` : '-'}</td>
+                  <td style="text-align: center;">
+                    ${order.discounted !== 'none' 
+                      ? `<span class="discount-badge">${order.discounted}</span> ₱5` 
+                      : '-'}
+                  </td>
                   <td style="text-align: right; font-weight: bold;">₱${Number(order.total).toFixed(2)}</td>
                 </tr>
               `).join('')}
@@ -675,11 +697,14 @@ export default function SalesReportPage() {
                       </td>
                       <td className="px-4 py-3 text-center text-sm">
                         {order.discounted !== 'none' ? (
-                          <span className="text-red-600 font-semibold">
-                            ₱5
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="inline-block bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold uppercase">
+                              {order.discounted}
+                            </span>
+                            <span className="text-red-600 font-bold">₱5</span>
+                          </div>
                         ) : (
-                          <span className="text-slate-400">Regular</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-slate-900 text-sm">
