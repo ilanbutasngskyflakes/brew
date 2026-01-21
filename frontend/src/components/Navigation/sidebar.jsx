@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, Box, Archive, FileText, Settings, LogOut, ChevronRight, AlertCircle } from "lucide-react";
+import { Menu, X, Home, Box, Archive, FileText, Settings, LogOut, ChevronRight, AlertCircle, DollarSign } from "lucide-react";
 import { useState } from "react";
 
 export default function Sidebar({ isOpen, setIsOpen }) {
@@ -18,6 +18,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { name: "Products", path: "/dashboard/product", icon: <Box size={20} /> },
     { name: "Ingredients", path: "/dashboard/ingredients", icon: <Archive size={20} /> },
     { name: "Reports", path: "/dashboard/reports", icon: <FileText size={20} /> },
+    { name: "Transactions", path: "/dashboard/cashflow", icon: <DollarSign size={20} /> },
     { name: "Settings", path: "/dashboard/settings", icon: <Settings size={20} /> },
   ];
 

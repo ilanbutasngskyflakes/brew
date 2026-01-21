@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* eslint-disable react-hooks/immutability */
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -10,6 +11,7 @@ export default function OrderHistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [toppings, setToppings] = useState([]);
+  const [statusUpdating, setStatusUpdating] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -35,26 +37,30 @@ export default function OrderHistoryPage() {
     loadData();
   }, [location]);
 
+  // Add null check before using:
   const getToppingById = (toppingId) => {
-    return toppings.find(t => t.id === toppingId);
+    const topping = toppings.find(t => t.id === toppingId);
+    return topping || { id: toppingId, name: "Unknown" };
   };
 
   const handleEditOrder = (order) => {
     const confirmEdit = window.confirm(
-      `Are you sure you want to edit Order #${order.id}? This will load the order into the cashier page for editing.`
+      `Are you sure you want to edit Order #${order.id}? This will mark it as Refunded.`
     );
     
     if (confirmEdit) {
-      navigate("/cashier", { state: { editOrder: order } });
+      // Auto-mark as refunded when edited
+      handleStatusChange(order.id, "refunded").then(() => {
+        navigate("/cashier", { state: { editOrder: order } });
+      });
     }
   };
 
   const handlePrintReceipt = (order) => {
+    const user = JSON.parse(localStorage.getItem("user"));
     const isDiscounted = order.discount > 0;
     const safeTotal = Number(order.total || 0);
     const safeDiscount = Number(order.discount || 0);
-
-    // Use explicit nullish coalescing and fallback to total if missing
     const safePaid = order.paid !== undefined && order.paid !== null
       ? Number(order.paid)
       : safeTotal;
@@ -73,73 +79,118 @@ export default function OrderHistoryPage() {
       <head>
         <title>Receipt - Order #${order.id}</title>
         <style>
+          * { margin: 0; padding: 0; }
           body { 
             font-family: 'Courier New', monospace; 
             padding: 20px; 
-            font-size: 12px;
+            font-size: 11px;
             max-width: 300px;
             margin: 0 auto;
+            line-height: 1.4;
           }
-          h2, h3 { text-align: center; margin: 5px 0; }
-          .divider { border-top: 1px dashed #000; margin: 10px 0; }
-          .header { text-align: center; margin-bottom: 15px; }
-          .item-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 11px; }
+          .center { text-align: center; }
+          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+          .item-row { display: flex; justify-content: space-between; margin: 4px 0; }
           .item-name { flex: 1; }
-          .item-qty { width: 40px; text-align: center; }
-          .item-price { width: 70px; text-align: right; }
-          .total-row { display: flex; justify-content: space-between; margin: 5px 0; font-weight: bold; }
-          .footer { text-align: center; margin-top: 15px; font-size: 10px; }
-          .discount-note { text-align: center; font-weight: bold; margin: 10px 0; }
-          .order-type { text-align: center; font-weight: bold; margin: 10px 0; text-transform: uppercase; }
-          .info-row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; }
+          .item-qty { width: 35px; text-align: center; }
+          .item-price { width: 60px; text-align: right; }
+          .total-row { display: flex; justify-content: space-between; margin: 4px 0; font-weight: bold; }
+          .label { font-weight: bold; }
+          .value { text-align: right; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h2>Barcelo Cafe</h2>
-          <div>La Consolacion College</div>
-          <div>Galo- Gatuslao- Rizal Streets,</div>
-          <div>Bacolod City, Philippines, 6100</div>
-          <div>Contact: 1234567890</div>
+        <div class="center">
+          <div style="font-weight: bold; margin-bottom: 2px;">Barcelo Cafe</div>
+          <div style="font-size: 10px;">La Consolacion College</div>
+          <div style="font-size: 10px;">Galo- Gatuslao- Rizal Streets,</div>
+          <div style="font-size: 10px;">Bacolod City, Philippines, 6100</div>
         </div>
+        
         <div class="divider"></div>
-        <div style="text-align: center; font-weight: bold; margin: 10px 0;">OFFICIAL RECEIPT</div>
-        <div class="order-type">${order.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
-        ${isDiscounted ? `<div class="discount-note">${(order.discount_type || order.discounted) === 'senior' ? 'SENIOR CITIZEN' : 'PWD'} DISCOUNT APPLIED (-₱${safeDiscount.toFixed(2)})</div>` : ''}
+        <div class="center" style="font-weight: bold; margin: 4px 0;">OFFICIAL RECEIPT</div>
+        <div class="center" style="font-weight: bold; margin: 4px 0; text-transform: uppercase;">${order.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
         <div class="divider"></div>
-        <div style="font-size: 11px; margin-bottom: 10px;">
-          <div class="info-row"><span>Date:</span><span>${new Date(order.created_at).toLocaleString()}</span></div>
-          <div class="info-row"><span>Order #:</span><span>${order.id}</span></div>
-          <div class="info-row"><span>Served by:</span><span>${order.cashier_name || 'Cashier'}</span></div>
-        </div>
-        <div class="divider"></div>
-        <div style="font-weight: bold; margin-bottom: 5px; font-size: 11px;">
-          <div style="display: flex;">
-            <div class="item-name">ITEM</div>
-            <div class="item-qty">QTY</div>
-            <div class="item-price">PRICE</div>
+        
+        <div style="margin: 4px 0;">
+          <div class="item-row" style="margin: 3px 0;">
+            <span class="label">Date:</span>
+            <span class="value">${new Date(order.created_at).toLocaleString()}</span>
+          </div>
+          <div class="item-row" style="margin: 3px 0;">
+            <span class="label">Order #:</span>
+            <span class="value">${order.id}</span>
+          </div>
+          <div class="item-row" style="margin: 3px 0;">
+            <span class="label">Customer:</span>
+            <span class="value">${order.customer_name || 'Walk-in'}</span>
+          </div>
+          <div class="item-row" style="margin: 3px 0;">
+            <span class="label">Served by:</span>
+            <span class="value">${user?.name || 'Cashier'}</span>
           </div>
         </div>
+        
+        <div class="divider"></div>
+        <div class="item-row" style="font-weight: bold; margin: 4px 0;">
+          <div class="item-name">ITEM</div>
+          <div class="item-qty">QTY</div>
+          <div class="item-price">PRICE</div>
+        </div>
+        <div class="divider"></div>
+        
         ${order.items?.map(item => {
           const qty = Number(item.quantity || 0);
-          const topping = item.topping_id ? getToppingById(item.topping_id) : null;
-          const totalPrice = Number(item.subtotal || 0);
-          let itemHTML = `<div class="item-row"><div class="item-name">${item.product_name || ""}</div><div class="item-qty">x${qty}</div><div class="item-price">₱${totalPrice.toFixed(2)}</div></div>`;
-          if (item.variant_name) itemHTML += `<div style="font-size:10px; color:#666; margin-left:10px;">${item.variant_name}</div>`;
-          if (topping) itemHTML += `<div style="font-size:10px; color:#666; margin-left:10px;">+ ${topping.name}</div>`;
+          const price = Number(item.price || 0);
+          const itemDiscount = Number(item.discount || 0);
+          const totalPrice = (price - itemDiscount) * qty;
+          
+          let itemHTML = `<div class="item-row">
+            <div class="item-name">${item.product_name || ""}</div>
+            <div class="item-qty">x${qty}</div>
+            <div class="item-price">₱${totalPrice.toFixed(2)}</div>
+          </div>`;
+          
+          if (item.variant_name) {
+            itemHTML += `<div style="font-size: 10px; color: #666; margin-left: 5px; margin-bottom: 2px;">${item.variant_name}</div>`;
+          }
+          
+          if (itemDiscount > 0) {
+            itemHTML += `<div style="font-size: 9px; color: #d00; margin-left: 5px; font-weight: bold; margin-bottom: 2px;">${item.discount_type?.toUpperCase() || 'DISCOUNT'} -₱${itemDiscount.toFixed(2)}</div>`;
+          }
+          
           return itemHTML;
         }).join('')}
+        
         <div class="divider"></div>
-        <div class="total-row"><span>SUBTOTAL:</span><span>₱${(safeTotal + safeDiscount).toFixed(2)}</span></div>
-        ${isDiscounted ? `<div class="total-row" style="color: #d00;"><span>DISCOUNT:</span><span>-₱${safeDiscount.toFixed(2)}</span></div>` : ''}
+        <div class="total-row">
+          <span>SUBTOTAL:</span>
+          <span>₱${(safeTotal + safeDiscount).toFixed(2)}</span>
+        </div>
+        
+        ${isDiscounted ? `<div class="total-row" style="color: #d00;">
+          <span>DISCOUNT:</span>
+          <span>-₱${safeDiscount.toFixed(2)}</span>
+        </div>` : ''}
+        
         <div class="divider"></div>
-        <div class="total-row" style="font-size: 14px;"><span>TOTAL:</span><span>₱${safeTotal.toFixed(2)}</span></div>
-        <div class="total-row"><span>CASH:</span><span>₱${safePaid.toFixed(2)}</span></div>
-        <div class="total-row"><span>CHANGE:</span><span>₱${Math.max(0, safeChange).toFixed(2)}</span></div>
+        <div class="total-row" style="font-size: 12px; margin: 6px 0;">
+          <span>TOTAL:</span>
+          <span>₱${safeTotal.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+          <span>CASH:</span>
+          <span>₱${safePaid.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+          <span>CHANGE:</span>
+          <span>₱${Math.max(0, safeChange).toFixed(2)}</span>
+        </div>
+        
         <div class="divider"></div>
-        <div class="footer">
-          <div style="margin: 10px 0;">Reference No: BARCELO${String(order.id).padStart(6, '0')}</div>
-          <div style="margin: 10px 0; font-weight: bold;">Thank you for your order!</div>
+        <div class="center" style="font-size: 10px; margin: 6px 0;">
+          <div>Reference No: BARCELO${String(order.id).padStart(6, '0')}</div>
+          <div style="font-weight: bold; margin-top: 4px;">Thank you for your order!</div>
           <div>Please come again!</div>
         </div>
       </body>
@@ -151,6 +202,31 @@ export default function OrderHistoryPage() {
     setTimeout(() => {
       receiptWindow.print();
     }, 250);
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    return new Promise((resolve, reject) => {
+      setStatusUpdating(orderId);
+      api.patch(`/order/${orderId}/status`, { status: newStatus })
+        .then(() => {
+          // Update local state
+          setOrders(orders.map(o => 
+            o.id === orderId ? { ...o, status: newStatus } : o
+          ));
+          
+          if (newStatus !== "refunded" && newStatus !== "pending" && newStatus !== "completed") {
+            alert(`Order #${orderId} marked as ${newStatus}`);
+          }
+          setStatusUpdating(null);
+          resolve();
+        })
+        .catch((err) => {
+          console.error("Cannot update order status:", err);
+          alert("Failed to update order status");
+          setStatusUpdating(null);
+          reject(err);
+        });
+    });
   };
 
   const filteredOrders = orders
@@ -349,6 +425,16 @@ export default function OrderHistoryPage() {
                                     + {topping.name}
                                   </div>
                                 )}
+                                {/* Show Add-ons if any */}
+                                {item.addOns && item.addOns.length > 0 && (
+                                  <div className="mt-1 space-y-0.5">
+                                    {item.addOns.map((addon, addonIdx) => (
+                                      <div key={addonIdx} className="text-xs text-orange-700 font-medium">
+                                        + {addon.name}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <span className="font-semibold text-slate-900">
@@ -382,6 +468,24 @@ export default function OrderHistoryPage() {
 
                   {/* Actions */}
                   <div className="flex lg:flex-col gap-2">
+                    {/* Status Dropdown */}
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                      disabled={statusUpdating === order.id}
+                      className={`flex-1 lg:flex-none py-2 px-3 rounded-lg transition-all font-medium text-sm border-2 outline-none ${
+                        order.status === 'completed'
+                          ? 'border-green-500 bg-green-50 text-green-900'
+                          : order.status === 'refunded'
+                          ? 'border-red-500 bg-red-50 text-red-900'
+                          : 'border-yellow-500 bg-yellow-50 text-yellow-900'
+                      } ${statusUpdating === order.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+
                     <button
                       onClick={() => handlePrintReceipt(order)}
                       className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2"

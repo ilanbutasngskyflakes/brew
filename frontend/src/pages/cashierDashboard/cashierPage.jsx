@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+/* eslint-disable no-unused-labels */
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/immutability */
@@ -5,18 +7,37 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
-import { 
-  FiShoppingCart, 
-  FiSearch, 
-  FiX, 
-  FiTrash2,
-  FiPlus,
-  FiMinus,
-  FiArrowLeft,
-  FiPackage
-} from "react-icons/fi";
+import Modal from "../../components/modals";
+import { FiShoppingCart, FiSearch, FiX, FiTrash2, FiPlus, FiMinus, FiArrowLeft, FiPackage, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 
 export default function CashierPage() {
+  // ✅ Revert to manual state
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+    onConfirm: null,
+    confirmText: "OK",
+    showCancel: false,
+  });
+
+  const showModal = (type, title, message, onConfirm = null, confirmText = "OK", showCancel = false) => {
+    setModal({
+      isOpen: true,
+      type,
+      title,
+      message,
+      onConfirm,
+      confirmText,
+      showCancel,
+    });
+  };
+
+  const closeModal = () => {
+    setModal({ ...modal, isOpen: false });
+  };
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -29,11 +50,15 @@ export default function CashierPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [orderType, setOrderType] = useState("dine-in");
+  const [expandedItem, setExpandedItem] = useState(null);
+  const [customerName, setCustomerName] = useState("");
+  const [addOns, setAddOns] = useState([]);
+  const [selectedAddOns, setSelectedAddOns] = useState({});
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user"));
   
-   useEffect(() => {
+  useEffect(() => {
     if (!user || (user.role !== "admin" && user.role !== "cashier")) {
       navigate("/login");
     }
@@ -41,12 +66,11 @@ export default function CashierPage() {
 
   const loadOrderForEdit = (order) => {
     if (!order || !order.items || order.items.length === 0) {
-      alert("Cannot load order - invalid data");
+      showModal("error", "Invalid Order", "Cannot load order - invalid data");
       return;
     }
     
     const cartItems = order.items.map((item, index) => {
-      // Find the product that has this variant
       let product = null;
       let variant = null;
       
@@ -59,9 +83,9 @@ export default function CashierPage() {
         }
       }
       
-      // Use current variant price, fallback to 0 if not found
       const currentPrice = variant ? Number(variant.price) : 0;
-      
+      const calculatedCost = item.calculated_cost || variant?.calculated_cost || 0;
+    
       return {
         id: `edit-${order.id}-${index}`,
         product_id: product?.id || item.product_id,
@@ -73,7 +97,8 @@ export default function CashierPage() {
         topping_id: item.topping_id || null,
         isMilkTea: item.topping_id !== null,
         maxStock: 9999,
-        isEditMode: true
+        isEditMode: true,
+        calculated_cost: calculatedCost
       };
     });
     
@@ -82,7 +107,7 @@ export default function CashierPage() {
     setOrderType(order.order_type || "dine-in");
     setEditingOrderId(order.id);
     window.history.replaceState({}, document.title);
-    alert("Order loaded for editing");
+    showModal("success", "Order Loaded", "Order loaded for editing");
   };
 
   useEffect(() => {
@@ -109,7 +134,7 @@ export default function CashierPage() {
     const handlePopState = (e) => {
       if (cart.length > 0 || editingOrderId) {
         const confirmLeave = window.confirm(
-          editingOrderId 
+          editingOrderId
             ? 'You are editing an order. Leave?'
             : 'You have items in cart. Leave?'
         );
@@ -140,6 +165,7 @@ export default function CashierPage() {
       setProducts(data.products || []);
     } catch (err) {
       console.error("Cannot load products:", err);
+      showModal("error", "Load Failed", "Cannot load products");
     }
   };
 
@@ -149,6 +175,7 @@ export default function CashierPage() {
       setCategories(data || []);
     } catch (err) {
       console.error("Cannot load categories:", err);
+      showModal("error", "Load Failed", "Cannot load categories");
     }
   };
 
@@ -158,6 +185,7 @@ export default function CashierPage() {
       setToppings(data || []);
     } catch (err) {
       console.error("Cannot load toppings:", err);
+      showModal("error", "Load Failed", "Cannot load toppings");
     }
   };
 
@@ -170,7 +198,7 @@ export default function CashierPage() {
     if (product.variants && product.variants.length > 0) {
       const hasStock = product.variants.some(v => v.quantity > 0);
       if (!hasStock && !editingOrderId) {
-        alert(`${product.product_name} is out of stock!`);
+        showModal("error", "Out of Stock", `${product.product_name} is out of stock!`);
         return;
       }
       
@@ -183,43 +211,63 @@ export default function CashierPage() {
     }
   };
 
-  const addToCart = (product, variant) => {
-    if (!editingOrderId && (!variant.quantity || variant.quantity === 0)) {
-      alert(`${product.product_name} - ${variant.name} is out of stock!`);
-      return;
-    }
-
-    const existingInCart = cart
-      .filter(item => item.variant_id === variant.id && !item.isEditMode)
-      .reduce((sum, item) => sum + item.quantity, 0);
+  const addToCart = (product, variant, addOnItems = []) => {
+    const addOnsTotal = addOnItems.reduce((sum, addon) => sum + Number(addon.price), 0);
     
-    if (!editingOrderId && existingInCart >= variant.quantity) {
-      alert(`Cannot add more! Only ${variant.quantity} in stock.`);
-      return;
-    }
-
-    const categoryName = getCategoryName(product.category_id);
-    const isMilkTea = categoryName.includes("milktea") || categoryName.includes("milk tea");
-    
-    const cartItem = {
-      id: `${product.id}-${variant.id}-${Date.now()}`,
+    // ✅ ADD discount per item
+    const newItem = {
+      id: Date.now(),
       product_id: product.id,
-      variant_id: variant.id,
       product_name: product.product_name,
+      variant_id: variant.id,
       variant_name: variant.name,
       price: Number(variant.price),
       quantity: 1,
-      image: product.image,
-      category_id: product.category_id,
-      isMilkTea: isMilkTea,
-      topping_id: null,
-      maxStock: editingOrderId ? 9999 : variant.quantity,
-      isEditMode: false
+      addOns: addOnItems,
+      addOnsTotal: addOnsTotal,
+      orderType: orderType,
+      discount_type: "none",      // ✅ Per-item discount TYPE
+      discount: 0,                // ✅ Per-item discount AMOUNT
+      itemDiscountType: "none"    // Keep for UI state
     };
-    
-    setCart([...cart, cartItem]);
+
+    setCart([...cart, newItem]);
     setShowVariantModal(false);
-    setSelectedProduct(null);
+    setSelectedAddOns({});
+  };
+
+  // ✅ UPDATED: Update per-item discount - actually calculate it
+  const updateItemDiscount = (itemId, discountType) => {
+    setCart(cart.map(item => {
+      if (item.id === itemId) {
+        let discountAmount = 0;
+        const itemSubtotal = item.price * item.quantity;
+        
+        // Only apply 5 peso discount (not 5%)
+        if (discountType === "senior" || discountType === "pwd") {
+          discountAmount = 5;
+        }
+        
+        return {
+          ...item,
+          discount_type: discountType,     // ✅ Send this to backend
+          discount: discountAmount,        // ✅ Send this to backend
+          itemDiscountType: discountType   // Keep for UI
+        };
+      }
+      return item;
+    }));
+  };
+
+  // ✅ UPDATED: This should call updateItemDiscount
+  const updateItemDiscountType = (itemId, discountTypeValue) => {
+    updateItemDiscount(itemId, discountTypeValue);  // ✅ Call the function that calculates discount
+  };
+
+  const updateItemOrderType = (itemId, newOrderType) => {
+    setCart(cart.map(item => 
+      item.id === itemId ? { ...item, itemOrderType: newOrderType } : item
+    ));
   };
 
   const updateQuantity = (itemId, change) => {
@@ -233,7 +281,7 @@ export default function CashierPage() {
             .reduce((sum, i) => sum + (i.id === itemId ? newQty : i.quantity), 0);
           
           if (item.maxStock && totalForVariant > item.maxStock) {
-            alert(`Cannot add more! Only ${item.maxStock} in stock.`);
+            showModal("error", `Cannot add more! Only ${item.maxStock} in stock.`);
             return item;
           }
         }
@@ -266,26 +314,31 @@ export default function CashierPage() {
 
   const calculateSubtotal = () => {
     return cart.reduce((sum, item) => {
-      const itemPrice = parseFloat(item.price) || 0;
+      let itemDiscount = 0;
+      if (item.itemDiscountType === "senior" || item.itemDiscountType === "pwd") {
+        itemDiscount = 5;
+      }
+      const itemPrice = (parseFloat(item.price) || 0) - itemDiscount;
       const toppingPrice = item.topping_id 
         ? parseFloat(getToppingById(item.topping_id)?.price) || 0
         : 0;
+      const addOnsPrice = item.addOns ? item.addOns.reduce((sum, addon) => sum + Number(addon.price), 0) : 0;
       const quantity = Number(item.quantity) || 0;
-      return sum + (itemPrice + toppingPrice) * quantity;
+      return sum + (itemPrice + toppingPrice + addOnsPrice) * quantity;
     }, 0);
   };
 
   const calculateDiscount = () => {
-    if (discountType === "senior" || discountType === "pwd") {
-      return 5;
-    }
-    return 0;
+    return cart.reduce((sum, item) => sum + Number(item.discount || 0), 0);
   };
 
   const calculateTotal = () => {
-    const subtotal = calculateSubtotal();
-    const discount = calculateDiscount();
-    return subtotal - discount;
+    return cart.reduce((sum, item) => {
+      const itemSubtotal = item.price * item.quantity;
+      const addOnsPrice = item.addOns ? item.addOns.reduce((sum, addon) => sum + Number(addon.price), 0) : 0;
+      const itemDiscount = item.discount || 0;
+      return sum + (itemSubtotal + addOnsPrice - itemDiscount);
+    }, 0);
   };
 
   const handleNavigateWithConfirm = (path) => {
@@ -308,98 +361,112 @@ export default function CashierPage() {
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
-      alert("Cart is empty!");
+      showModal("error", "Empty Cart", "Please add items to cart");
       return;
     }
 
-    const paid = parseFloat(amountPaid);
-    const total = calculateTotal();
-
-    if (isNaN(paid) || paid < total) {
-      alert(`Insufficient payment! Total: ₱${total.toFixed(2)}`);
-      return;
-    }
-
-    const change = paid - total;
-    const cashier_id = user?.id;
-
-    if (!cashier_id) {
-      alert("User session not found. Please log in again.");
+    if (!customerName.trim()) {
+      showModal("error", "Customer Name Required", "Please enter customer name");
       return;
     }
 
     try {
-      const orderData = {
-        cashier_id: cashier_id,
+      // ✅ Calculate total discount from per-item discounts
+      const totalDiscount = cart.reduce((sum, item) => sum + (Number(item.discount) || 0), 0);
+      
+      // ✅ Calculate final total AFTER per-item discounts
+      const finalTotal = cart.reduce((sum, item) => {
+        const itemSubtotal = item.price * item.quantity;
+        const addOnsPrice = item.addOns ? item.addOns.reduce((sum, addon) => sum + Number(addon.price), 0) : 0;
+        const itemDiscount = item.discount || 0;
+        return sum + (itemSubtotal + addOnsPrice - itemDiscount);
+      }, 0);
+
+      const orderPayload = {
+        cashier_id: user?.id,
         order_type: orderType,
         status: "completed",
-        discount_type: discountType,
-        discount: calculateDiscount(),
-        paid: parseFloat(paid.toFixed(2)),
-        change: parseFloat(change.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-        items: cart.map(item => {
-          const toppingPrice = item.topping_id ? Number(getToppingById(item.topping_id)?.price || 0) : 0;
-          const itemPrice = Number(item.price);
-          const totalItemPrice = itemPrice + toppingPrice;
-          
-          return {
-            product_id: item.product_id,
-            variant_id: item.variant_id,
-            topping_id: item.topping_id || null,
-            quantity: item.quantity,
-            price: parseFloat(totalItemPrice.toFixed(2)),
-            subtotal: parseFloat((totalItemPrice * item.quantity).toFixed(2)),
-          };
-        }),
+        total: finalTotal,                    // ✅ Use calculated total
+        discount_type: "per-item",            // ✅ Indicate per-item discounting
+        discount: totalDiscount,              // ✅ Total discount amount
+        items: cart.map(item => ({
+          variant_id: item.variant_id,
+          quantity: item.quantity,
+          price: item.price,
+          discount_type: item.discount_type || null,  // ✅ Per-item discount type
+          discount: item.discount || 0,               // ✅ Per-item discount amount
+          addOns: item.addOns || []
+        })),
+        paid: amountPaid ? Number(amountPaid) : finalTotal,
+        change: amountPaid ? Number(amountPaid) - finalTotal : 0
       };
 
-      const cartItemsForReceipt = [...cart];
-      const receiptData = {
-        total: total,
-        discount: calculateDiscount(),
-        discount_type: discountType,
-        paid: paid,
-        change: change,
-        order_type: orderType,
-        cashier_name: user?.name || "Cashier"
-      };
+      console.log("📤 SENDING ORDER:", orderPayload);
+      
+      const response = await api.post("/order", orderPayload);
+      
+      // ✅ DEDUCT ADD-ONS FROM INVENTORY
+      const deductAddOnsPromises = cart.flatMap(item => {
+        if (item.addOns && item.addOns.length > 0) {
+          return item.addOns.map(addon => {
+            // Calculate total quantity needed (addon quantity per item × number of items ordered)
+            const totalAddonNeeded = (addon.quantity || 1) * item.quantity;
+            
+            return api.put(`/addons/${addon.id}`, {
+              quantity: totalAddonNeeded,
+              operation: "deduct" // Tell backend to deduct instead of set
+            }).catch(error => {
+              console.warn(`Failed to deduct ${addon.name}:`, error);
+              // Don't fail the order if addon deduction fails
+              return null;
+            });
+          });
+        }
+        return [];
+      });
 
-      if (editingOrderId) {
-        await api.put(`/order/${editingOrderId}`, orderData);
-        alert(`Order #${editingOrderId} updated!`);
-        printReceipt(receiptData, editingOrderId, change, cartItemsForReceipt);
-        setEditingOrderId(null);
-      } else {
-        const response = await api.post("/order", orderData);
-        const orderId = response.data.id || response.data.order_id;
-        alert(`Order completed!`);
-        printReceipt(receiptData, orderId, change, cartItemsForReceipt);
+      // Wait for all add-ons to be deducted
+      if (deductAddOnsPromises.length > 0) {
+        await Promise.all(deductAddOnsPromises);
+        console.log("✅ Add-ons inventory deducted");
       }
 
-      setCart([]);
-      setDiscountType("none");
-      setAmountPaid("");
-      setOrderType("dine-in");
-      
-    } catch (err) {
-      console.error("Checkout error:", err);
-      alert(`Failed to complete order: ${err.response?.data?.message || err.message}`);
+      showModal(
+        "success",
+        "Order Completed",
+        `Order #${response.data.order_id} created successfully!`,
+        () => {
+          // ✅ Print receipt with customer name
+          printReceipt(response.data.order_id, {
+            order_type: orderType,
+            total: finalTotal,
+            discount: totalDiscount,
+            paid: amountPaid ? Number(amountPaid) : finalTotal,
+            change: amountPaid ? Number(amountPaid) - finalTotal : 0
+          });
+
+          setCart([]);
+          setAmountPaid("");
+          setCustomerName("");
+          navigate("/cashier/order", { state: { updatedOrder: response.data } });
+        }
+      );
+    } catch (error) {
+      console.error("Checkout error:", error);
+      showModal(
+        "error",
+        "Checkout Failed",
+        error.response?.data?.message || "Failed to create order"
+      );
     }
   };
 
-  const printReceipt = (order, orderId, _change, cartItems) => {
-    const isDiscounted = order.discount > 0;
-    const safeTotal = Number(order.total || 0);
-    const safeDiscount = Number(order.discount || 0);
-
-    // Use order.paid and order.change, fallback if missing
-    const safePaid = order.paid !== undefined && order.paid !== null
-      ? Number(order.paid)
-      : safeTotal;
-    const safeChange = order.change !== undefined && order.change !== null
-      ? Number(order.change)
-      : 0;
+  const printReceipt = (orderId, orderData) => {
+    const isDiscounted = orderData.discount > 0;
+    const safeTotal = Number(orderData.total || 0);
+    const safeDiscount = Number(orderData.discount || 0);
+    const safePaid = Number(orderData.paid || safeTotal);
+    const safeChange = Number(orderData.change || 0);
 
     const receiptWindow = window.open("", "_blank", "height=600,width=400");
     if (!receiptWindow) {
@@ -428,9 +495,11 @@ export default function CashierPage() {
           .item-price { width: 70px; text-align: right; }
           .total-row { display: flex; justify-content: space-between; margin: 5px 0; font-weight: bold; }
           .footer { text-align: center; margin-top: 15px; font-size: 10px; }
-          .discount-note { text-align: center; font-weight: bold; margin: 10px 0; }
+          .discount-note { text-align: center; font-weight: bold; margin: 10px 0; color: #d00; }
           .order-type { text-align: center; font-weight: bold; margin: 10px 0; text-transform: uppercase; }
           .info-row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; }
+          .item-type { font-size: 9px; color: #666; margin-left: 10px; }
+          .item-discount { font-size: 9px; color: #d00; margin-left: 10px; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -439,17 +508,17 @@ export default function CashierPage() {
           <div>La Consolacion College</div>
           <div>Galo- Gatuslao- Rizal Streets,</div>
           <div>Bacolod City, Philippines, 6100</div>
-          <div>Contact: 1234567890</div>
         </div>
         <div class="divider"></div>
         <div style="text-align: center; font-weight: bold; margin: 10px 0;">OFFICIAL RECEIPT</div>
-        <div class="order-type">${order.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
-        ${isDiscounted ? `<div class="discount-note">${order.discount_type === 'senior' ? 'SENIOR CITIZEN' : 'PWD'} DISCOUNT APPLIED (-₱${safeDiscount.toFixed(2)})</div>` : ''}
+        <div class="order-type">${orderData.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
+        
         <div class="divider"></div>
         <div style="font-size: 11px; margin-bottom: 10px;">
           <div class="info-row"><span>Date:</span><span>${new Date().toLocaleString()}</span></div>
           <div class="info-row"><span>Order #:</span><span>${orderId}</span></div>
-          <div class="info-row"><span>Served by:</span><span>${order.cashier_name || 'Cashier'}</span></div>
+          <div class="info-row"><span>Customer:</span><span>${customerName || 'Walk-in'}</span></div>
+          <div class="info-row"><span>Served by:</span><span>${user?.name || 'Cashier'}</span></div>
         </div>
         <div class="divider"></div>
         <div style="font-weight: bold; margin-bottom: 5px; font-size: 11px;">
@@ -459,15 +528,21 @@ export default function CashierPage() {
             <div class="item-price">PRICE</div>
           </div>
         </div>
-        ${cartItems.map(item => {
+        ${cart.map(item => {
           const qty = Number(item.quantity || 0);
           const price = Number(item.price || 0);
-          const topping = item.topping_id ? getToppingById(item.topping_id) : null;
-          const toppingPrice = Number(topping?.price || 0);
-          const totalPrice = (price + toppingPrice) * qty;
+          const addOnsPrice = item.addOns ? item.addOns.reduce((sum, addon) => sum + Number(addon.price), 0) : 0;
+          const itemDiscount = item.discount || 0;
+          const totalPrice = (price + addOnsPrice - itemDiscount) * qty;
+          
           let itemHTML = `<div class="item-row"><div class="item-name">${item.product_name || ""}</div><div class="item-qty">x${qty}</div><div class="item-price">₱${totalPrice.toFixed(2)}</div></div>`;
           if (item.variant_name) itemHTML += `<div style="font-size:10px; color:#666; margin-left:10px;">${item.variant_name}</div>`;
-          if (topping) itemHTML += `<div style="font-size:10px; color:#666; margin-left:10px;">+ ${topping.name}</div>`;
+          if (itemDiscount > 0) itemHTML += `<div class="item-discount">${item.discount_type?.toUpperCase() || 'DISCOUNT'} (-₱${itemDiscount.toFixed(2)})</div>`;
+          if (item.addOns && item.addOns.length > 0) {
+            item.addOns.forEach(addon => {
+              itemHTML += `<div style="font-size:10px; color:#d97706; margin-left:10px;">+ ${addon.name}</div>`;
+            });
+          }
           return itemHTML;
         }).join('')}
         <div class="divider"></div>
@@ -489,6 +564,9 @@ export default function CashierPage() {
 
     receiptWindow.document.close();
     receiptWindow.focus();
+    setTimeout(() => {
+      receiptWindow.print();
+    }, 250);
   };
 
   const filteredProducts = products.filter(product => {
@@ -497,15 +575,60 @@ export default function CashierPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const groupedProducts = categories.map(category => ({
-    category,
-    products: filteredProducts.filter(p => p.category_id === category.id)
-  }));
+  const groupedProducts = categories.map(category => {
+    const categoryProducts = filteredProducts.filter(p => p.category_id === category.id);
+    
+    const espressoProducts = categoryProducts.filter(p => 
+      p.product_name.toLowerCase().includes("espresso")
+    );
+    const brewedProducts = categoryProducts.filter(p => 
+      p.product_name.toLowerCase().includes("brewed")
+    );
+    const otherProducts = categoryProducts.filter(p => 
+      !p.product_name.toLowerCase().includes("espresso") && 
+      !p.product_name.toLowerCase().includes("brewed")
+    );
+
+    return {
+      category,
+      products: categoryProducts,
+      espressoProducts,
+      brewedProducts,
+      otherProducts
+    };
+  });
+
+  const checkCartStock = () => {
+    cart.forEach(item => {
+      const product = products.find(p => p.id === item.product_id);
+      const variant = product?.variants?.find(v => v.id === item.variant_id);
+      
+      if (variant && Number(variant.quantity) < item.quantity) {
+        showModal(
+          "warning",
+          "Low Stock",
+          `${product.product_name} - ${variant.name}: Only ${variant.quantity} available`
+        );
+      }
+    });
+  };
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-slate-50 overflow-hidden">
+      {/* Modal */}
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        onConfirm={modal.onConfirm}
+        confirmText={modal.confirmText}
+        showCancel={modal.showCancel}
+      />
+
       {/* Sidebar - Categories */}
-      <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col overflow-hidden">
+      <div className="w-full lg:w-60 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col overflow-hidden">
         <div className="p-4 bg-[#073dbe]">
           <h2 className="text-lg font-bold text-white mb-1">Categories</h2>
           <p className="text-blue-100 text-xs">Browse menu</p>
@@ -611,77 +734,227 @@ export default function CashierPage() {
               <p className="text-slate-500 text-sm">Try a different search term or category</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {groupedProducts.map(({ category, products: categoryProducts }) => {
-                if (categoryProducts.length === 0) return null;
-                
+            <div className="space-y-8">
+              {groupedProducts.map(({ category, espressoProducts, brewedProducts, otherProducts }) => {
+                if (espressoProducts.length === 0 && brewedProducts.length === 0 && otherProducts.length === 0) {
+                  return null;
+                }
+
                 return (
                   <div key={category.id}>
-                    <h2 className="text-xl font-bold text-slate-900 capitalize mb-3">{category.name}</h2>
-                  
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                      {categoryProducts.map(product => {
-                        const hasStock = product.variants?.some(v => v.quantity > 0);
-                        return (
-                          <div 
-                            key={product.id} 
-                            onClick={() => hasStock && handleProductClick(product)}
-                            className={`bg-white rounded-lg border border-slate-200 overflow-hidden transition-all ${
-                              hasStock ? 'hover:border-[#073dbe] cursor-pointer' : 'opacity-50 cursor-not-allowed'
-                            }`}
-                          >
-                            <div className="h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                              {product.image ? (
-                                <img
-                                  src={`http://localhost:8080/uploads/${product.image}`}
-                                  alt={product.product_name}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="text-center p-3">
-                                  <FiPackage className="text-slate-400 text-3xl mx-auto mb-2" />
-                                  <p className="text-slate-400 text-xs">No image</p>
-                                </div>
-                              )}
-                              
-                              {!hasStock && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                  <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold">
-                                    OUT OF STOCK
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="p-3">
-                              <h3 className="font-bold text-slate-900 text-sm mb-2 line-clamp-2">{product.product_name}</h3>
-                              
-                              {product.variants && product.variants.length > 0 && (
-                                <div>
-                                  {product.variants.length === 1 ? (
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-[#073dbe] font-bold text-lg">
-                                        ₱{Number(product.variants[0].price).toFixed(2)}
-                                      </p>
-                                      <p className="text-xs text-slate-500">
-                                        Stock: {product.variants[0].quantity}
-                                      </p>
-                                    </div>
+                    <h2 className="text-xl font-bold text-slate-900 capitalize mb-4">{category.name}</h2>
+                    
+                    {otherProducts.length > 0 && (
+                      <div className="mb-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                          {otherProducts.map(product => {
+                            const hasStock = product.variants?.some(v => v.quantity > 0);
+                            return (
+                              <div 
+                                key={product.id} 
+                                onClick={() => hasStock && handleProductClick(product)}
+                                className={`bg-white rounded-lg border border-slate-200 overflow-hidden transition-all ${
+                                  hasStock ? 'hover:border-[#073dbe] cursor-pointer' : 'opacity-50 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                                  {product.image ? (
+                                    <img
+                                      src={`http://localhost:8080/uploads/${product.image}`}
+                                      alt={product.product_name}
+                                      className="h-full w-full object-cover"
+                                    />
                                   ) : (
-                                    <div>
-                                      <p className="text-xs text-slate-500 mb-0.5">{product.variants.length} variants</p>
-                                      <p className="text-[#073dbe] font-bold text-lg">
-                                        From ₱{Math.min(...product.variants.map(v => Number(v.price))).toFixed(2)}
-                                      </p>
+                                    <div className="text-center p-3">
+                                      <FiPackage className="text-slate-400 text-3xl mx-auto mb-2" />
+                                      <p className="text-slate-400 text-xs">No image</p>
+                                    </div>
+                                  )}
+                                  
+                                  {!hasStock && (
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                      <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold">
+                                        OUT OF STOCK
+                                      </span>
                                     </div>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                                
+                                <div className="p-3">
+                                  <h3 className="font-bold text-slate-900 text-sm mb-2 line-clamp-2">{product.product_name}</h3>
+                                  
+                                  {product.variants && product.variants.length > 0 && (
+                                    <div>
+                                      {product.variants.length === 1 ? (
+                                        <div className="flex items-center justify-between">
+                                          <p className="text-[#073dbe] font-bold text-lg">
+                                            ₱{Number(product.variants[0].price).toFixed(2)}
+                                          </p>
+                                          <p className="text-xs text-slate-500">
+                                            Stock: {product.variants[0].quantity}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p className="text-xs text-slate-500 mb-0.5">{product.variants.length} variants</p>
+                                          <p className="text-[#073dbe] font-bold text-lg">
+                                            From ₱{Math.min(...product.variants.map(v => Number(v.price))).toFixed(2)}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {espressoProducts.length > 0 && (
+                      <div className="mb-6">
+                        <div className="mb-3 flex items-center gap-2">
+                          <div className="w-1 h-6 bg-amber-600 rounded-full"></div>
+                          <h3 className="text-lg font-bold text-amber-900">Espresso</h3>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                          {espressoProducts.map(product => {
+                            const hasStock = product.variants?.some(v => v.quantity > 0);
+                            return (
+                              <div 
+                                key={product.id} 
+                                onClick={() => hasStock && handleProductClick(product)}
+                                className={`bg-white rounded-lg border border-amber-200 overflow-hidden transition-all ${
+                                  hasStock ? 'hover:border-amber-600 cursor-pointer hover:shadow-lg' : 'opacity-50 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                                  {product.image ? (
+                                    <img
+                                      src={`http://localhost:8080/uploads/${product.image}`}
+                                      alt={product.product_name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="text-center p-3">
+                                      <FiPackage className="text-slate-400 text-3xl mx-auto mb-2" />
+                                      <p className="text-slate-400 text-xs">No image</p>
+                                    </div>
+                                  )}
+                                  
+                                  {!hasStock && (
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                      <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold">
+                                        OUT OF STOCK
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="p-3">
+                                  <h3 className="font-bold text-slate-900 text-sm mb-2 line-clamp-2">{product.product_name}</h3>
+                                  
+                                  {product.variants && product.variants.length > 0 && (
+                                    <div>
+                                      {product.variants.length === 1 ? (
+                                        <div className="flex items-center justify-between">
+                                          <p className="text-amber-700 font-bold text-lg">
+                                            ₱{Number(product.variants[0].price).toFixed(2)}
+                                          </p>
+                                          <p className="text-xs text-slate-500">
+                                            Stock: {product.variants[0].quantity}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p className="text-xs text-slate-500 mb-0.5">{product.variants.length} variants</p>
+                                          <p className="text-amber-700 font-bold text-lg">
+                                            From ₱{Math.min(...product.variants.map(v => Number(v.price))).toFixed(2)}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {brewedProducts.length > 0 && (
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
+                          <h3 className="text-lg font-bold text-blue-900">Brewed</h3>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                          {brewedProducts.map(product => {
+                            const hasStock = product.variants?.some(v => v.quantity > 0);
+                            return (
+                              <div 
+                                key={product.id} 
+                                onClick={() => hasStock && handleProductClick(product)}
+                                className={`bg-white rounded-lg border border-blue-200 overflow-hidden transition-all ${
+                                  hasStock ? 'hover:border-blue-600 cursor-pointer hover:shadow-lg' : 'opacity-50 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                                  {product.image ? (
+                                    <img
+                                      src={`http://localhost:8080/uploads/${product.image}`}
+                                      alt={product.product_name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="text-center p-3">
+                                      <FiPackage className="text-slate-400 text-3xl mx-auto mb-2" />
+                                      <p className="text-slate-400 text-xs">No image</p>
+                                    </div>
+                                  )}
+                                  
+                                  {!hasStock && (
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                      <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold">
+                                        OUT OF STOCK
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="p-3">
+                                  <h3 className="font-bold text-slate-900 text-sm mb-2 line-clamp-2">{product.product_name}</h3>
+                                  
+                                  {product.variants && product.variants.length > 0 && (
+                                    <div>
+                                      {product.variants.length === 1 ? (
+                                        <div className="flex items-center justify-between">
+                                          <p className="text-blue-700 font-bold text-lg">
+                                            ₱{Number(product.variants[0].price).toFixed(2)}
+                                          </p>
+                                          <p className="text-xs text-slate-500">
+                                            Stock: {product.variants[0].quantity}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p className="text-xs text-slate-500 mb-0.5">{product.variants.length} variants</p>
+                                          <p className="text-blue-700 font-bold text-lg">
+                                            From ₱{Math.min(...product.variants.map(v => Number(v.price))).toFixed(2)}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -692,9 +965,9 @@ export default function CashierPage() {
 
       {/* Variant Selection Modal */}
       {showVariantModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">{selectedProduct.product_name}</h3>
                 <p className="text-slate-600 text-sm mt-0.5">Select a variant</p>
@@ -702,22 +975,26 @@ export default function CashierPage() {
               <button
                 onClick={() => {
                   setShowVariantModal(false);
-                  setSelectedProduct(null);
+                  setSelectedAddOns({});
                 }}
-                className="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                className="text-slate-400 hover:text-slate-600"
               >
-                <FiX size={20} />
+                <FiX size={24} />
               </button>
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-2 mb-6">
               {selectedProduct.variants?.map(variant => (
                 <button
                   key={variant.id}
-                  onClick={() => addToCart(selectedProduct, variant)}
+                  onClick={() => {
+                    setSelectedProduct({ ...selectedProduct, selectedVariant: variant });
+                  }}
                   disabled={variant.quantity === 0}
                   className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    variant.quantity === 0
+                    selectedProduct.selectedVariant?.id === variant.id
+                      ? "border-[#073dbe] bg-blue-50"
+                      : variant.quantity === 0
                       ? "bg-slate-100 border-slate-200 cursor-not-allowed opacity-50"
                       : "bg-white border-slate-300 hover:border-[#073dbe] hover:bg-blue-50"
                   }`}
@@ -735,6 +1012,88 @@ export default function CashierPage() {
                   </div>
                 </button>
               ))}
+            </div>
+
+            {/* Add-Ons Section */}
+            {toppings.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Add-Ons (Optional)</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {toppings.map((addon) => (
+                    <label
+                      key={addon.id}
+                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
+                        selectedAddOns[addon.id]
+                          ? "border-orange-600 bg-orange-50"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedAddOns[addon.id] || false}
+                        onChange={(e) => {
+                          setSelectedAddOns(prev => ({
+                            ...prev,
+                            [addon.id]: e.target.checked
+                          }));
+                        }}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-900">
+                          {addon.name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {addon.unit && `${addon.quantity} ${addon.unit}`}
+                        </p>
+                      </div>
+                      <p className="text-sm text-orange-600 font-semibold">
+                        +₱{Number(addon.price).toFixed(2)}
+                      </p>
+                   </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200">
+              <button
+                onClick={() => {
+                  setShowVariantModal(false);
+                  setSelectedAddOns({});
+                }}
+                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedProduct.selectedVariant) {
+                    showModal("error", "Select Variant", "Please select a variant first");
+                    return;
+                  }
+
+                  const addOnItems = Object.entries(selectedAddOns)
+                    .filter(([_, selected]) => selected)
+                    .map(([addonId, _]) => {
+                      const addon = toppings.find(a => a.id === parseInt(addonId));
+                      return {
+                        id: addon.id,
+                        name: addon.name,
+                        price: addon.price,
+                        quantity: addon.quantity,
+                        unit: addon.unit,
+                        unit_price: addon.price
+                      };
+                    });
+
+                  addToCart(selectedProduct, selectedProduct.selectedVariant, addOnItems);
+                }}
+                className="flex-1 px-4 py-2.5 bg-[#073dbe] text-white rounded-lg hover:bg-[#052d99] transition-colors font-medium"
+              >
+                Add to Cart
+              </button>
             </div>
           </div>
         </div>
@@ -757,6 +1116,19 @@ export default function CashierPage() {
               </div>
             )}
           </div>
+
+          {/* Customer Name Input */}
+          <div className="mt-4">
+            <label className="block text-xs font-bold text-blue-100 mb-1.5">Customer Name <span className="text-red-300">*</span></label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Enter customer name..."
+              className="w-full px-3 py-2 rounded-lg border border-blue-300 bg-white/10 text-white placeholder-blue-200 focus:outline-none focus:border-white focus:ring-2 focus:ring-blue-200 text-sm"
+              required
+            />
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-3">
@@ -769,149 +1141,234 @@ export default function CashierPage() {
           ) : (
             <>
               <div className="space-y-3 mb-4">
-                {cart.map(item => {
+                {cart.map((item, idx) => {
                   const selectedTopping = item.topping_id ? getToppingById(item.topping_id) : null;
+                  const isExpanded = expandedItem === item.id;
+                  const itemDiscount = item.itemDiscountType === "senior" || item.itemDiscountType === "pwd" ? 5 : 0;
+                  const discountedPrice = Number(item.price) - itemDiscount;
+                  const addOnsPrice = item.addOns ? item.addOns.reduce((sum, addon) => sum + Number(addon.price), 0) : 0;
+                  const totalItemPrice = discountedPrice + addOnsPrice;
+                  
+                  const variant = products
+                    .flatMap(p => p.variants || [])
+                    .find(v => v.id === item.variant_id);
+                  const isLowStock = variant && variant.quantity < 20;
+                  const isOutOfStock = variant && variant.quantity === 0;
+
                   return (
-                    <div key={item.id} className="bg-white rounded-lg p-3 border border-slate-200">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{item.product_name}</h4>
-                          <p className="text-xs text-slate-600 mt-0.5">{item.variant_name}</p>
-                          <p className="text-[#073dbe] font-bold mt-1">₱{Number(item.price).toFixed(2)}</p>
+                    <div key={item.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-2">
+                      {/* Item Card */}
+                      <div className="p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{item.product_name}</h4>
+                              {isOutOfStock ? (
+                                <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded">
+                                  OUT OF STOCK
+                                </span>
+                              ) : isLowStock ? (
+                                <span className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded">
+                                  LOW STOCK
+                                </span>
+                              ) : (
+                                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded">
+                                  IN STOCK
+                                </span>
+                              )}
+                            </div>
+                            
+                            <p className="text-xs text-slate-600 mt-0.5">{item.variant_name}</p>
+                            
+                            <p className="text-xs text-slate-500 mt-1">
+                              <span className="font-medium">Price:</span> ₱{Number(item.price).toFixed(2)}
+                            </p>
+
+                            {item.addOns && item.addOns.length > 0 && (
+                              <div className="mt-1.5 space-y-1">
+                                {item.addOns.map((addon, idx) => (
+                                  <div key={idx} className="flex items-center justify-between bg-orange-50 px-2 py-1 rounded text-xs border border-orange-200">
+                                    <span className="text-orange-800 font-medium">+ {addon.name}</span>
+                                    <span className="text-orange-600 font-bold">₱{Number(addon.price).toFixed(2)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {itemDiscount > 0 && (
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="line-through text-slate-400 text-xs">₱{Number(item.price).toFixed(2)}</span>
+                                <span className="text-red-600 font-bold text-xs">-₱{itemDiscount.toFixed(2)}</span>
+                              </div>
+                            )}
+                            
+                            <p className="text-[#073dbe] font-bold mt-1">
+                              Total: ₱{totalItemPrice.toFixed(2)}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-red-600 hover:text-white hover:bg-red-600 w-7 h-7 rounded-lg font-bold transition-all flex items-center justify-center"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
                         </div>
+
+                        <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-1.5 mb-2">
+                          <button
+                            onClick={() => updateQuantity(item.id, -1)}
+                            className="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
+                          >
+                            <FiMinus size={14} />
+                          </button>
+                          <span className="font-bold text-lg text-slate-800 flex-1 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, 1)}
+                            className="bg-green-600 hover:bg-green-700 text-white w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
+                            disabled={item.quantity >= item.maxStock}
+                          >
+                            <FiPlus size={14} />
+                          </button>
+                        </div>
+
+                        <div className="border-t border-slate-200 pt-2 bg-slate-50 rounded-lg p-2 mb-2">
+                          <p className="flex items-center justify-between">
+                            <span className="text-xs text-slate-600 font-semibold">Item Subtotal:</span>
+                            <span className="text-base font-bold text-[#073dbe]">₱{(totalItemPrice * Number(item.quantity)).toFixed(2)}</span>
+                          </p>
+                        </div>
+
                         <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-red-600 hover:text-white hover:bg-red-600 w-7 h-7 rounded-lg font-bold transition-all flex items-center justify-center"
+                          onClick={() => setExpandedItem(isExpanded ? null : item.id)}
+                          className="w-full text-center text-xs text-[#073dbe] font-bold hover:underline py-1"
                         >
-                          <FiTrash2 size={14} />
+                          {isExpanded ? "Hide Options" : "More Options"}
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-1.5">
-                        <button
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
-                        >
-                          <FiMinus size={14} />
-                        </button>
-                        <span className="font-bold text-lg text-slate-800 flex-1 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="bg-green-600 hover:bg-green-700 text-white w-8 h-8 rounded-lg font-bold transition-all flex items-center justify-center"
-                        >
-                          <FiPlus size={14} />
-                        </button>
-                      </div>
-
-                      {item.isMilkTea && toppings.length > 0 && (
-                        <div className="border-t border-slate-200 pt-2 mt-2">
-                          <p className="text-xs font-bold text-slate-800 mb-2">Add-ons:</p>
-                          <div className="space-y-1.5">
-                            {toppings.map(topping => (
-                              <label key={topping.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-all">
+                      {/* Expandable Options */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-200 bg-slate-50 p-3 space-y-3">
+                          {/* Order Type */}
+                          <div>
+                            <p className="text-xs font-bold text-slate-800 mb-1.5">Order Type</p>
+                            <div className="space-y-1.5">
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
                                 <input
                                   type="radio"
-                                  name={`topping-${item.id}`}
-                                  checked={item.topping_id === topping.id}
-                                  onChange={() => selectTopping(item.id, topping.id)}
+                                  name={`orderType-${item.id}`}
+                                  checked={item.itemOrderType === "dine-in"}
+                                  onChange={() => updateItemOrderType(item.id, "dine-in")}
                                   className="w-4 h-4 text-[#073dbe]"
                                 />
-                                <span className="text-xs text-slate-700 flex-1 font-medium">{topping.name}</span>
-                                <span className="text-xs text-[#073dbe] font-bold">+₱{Number(topping.price).toFixed(2)}</span>
+                                <span className="font-semibold text-slate-700 text-sm">Dine In</span>
                               </label>
-                            ))}
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
+                                <input
+                                  type="radio"
+                                  name={`orderType-${item.id}`}
+                                  checked={item.itemOrderType === "takeout"}
+                                  onChange={() => updateItemOrderType(item.id, "takeout")}
+                                  className="w-4 h-4 text-[#073dbe]"
+                                />
+                                <span className="font-semibold text-slate-700 text-sm">Take Out</span>
+                              </label>
+                            </div>
                           </div>
-                          {selectedTopping && (
-                            <button
-                              onClick={() => selectTopping(item.id, item.topping_id)}
-                              className="mt-1.5 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
-                            >
-                              <FiX size={12} />
-                              Remove add-on
-                            </button>
+
+                          {/* Item Discount */}
+                          <div className="bg-white rounded-lg p-3 border border-amber-200">
+                            <p className="font-bold text-slate-800 mb-2 text-sm">Item Discount</p>
+                            <div className="space-y-1.5">
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-amber-50 p-2 rounded-lg transition-all">
+                                <input
+                                  type="radio"
+                                  name={`discount-${item.id}`}
+                                  checked={item.itemDiscountType === "none"}
+                                  onChange={() => updateItemDiscountType(item.id, "none")}
+                                  className="w-4 h-4 text-amber-600"
+                                />
+                                <span className="font-semibold text-slate-700 text-sm">No Discount</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-amber-50 p-2 rounded-lg transition-all">
+                                <input
+                                  type="radio"
+                                  name={`discount-${item.id}`}
+                                  checked={item.itemDiscountType === "senior"}
+                                  onChange={() => updateItemDiscountType(item.id, "senior")}
+                                  className="w-4 h-4 text-amber-600"
+                                />
+                                <div className="flex-1 flex items-center justify-between">
+                                  <span className="font-semibold text-slate-700 text-sm">Senior Citizen</span>
+                                  <span className="text-amber-700 font-bold text-xs">-₱5.00</span>
+                                </div>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-amber-50 p-2 rounded-lg transition-all">
+                                <input
+                                  type="radio"
+                                  name={`discount-${item.id}`}
+                                  checked={item.itemDiscountType === "pwd"}
+                                  onChange={() => updateItemDiscountType(item.id, "pwd")}
+                                  className="w-4 h-4 text-amber-600"
+                                />
+                                <div className="flex-1 flex items-center justify-between">
+                                  <span className="font-semibold text-slate-700 text-sm">PWD</span>
+                                  <span className="text-amber-700 font-bold text-xs">-₱5.00</span>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Add-ons Info */}
+                          {item.addOns && item.addOns.length > 0 && (
+                            <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                              <p className="text-xs font-bold text-orange-900 mb-2">Selected Add-Ons:</p>
+                              <div className="space-y-1">
+                                {item.addOns.map((addon, idx) => (
+                                  <div key={idx} className="flex justify-between text-xs">
+                                    <span className="text-orange-800">{addon.name}</span>
+                                    <span className="text-orange-600 font-bold">+₱{Number(addon.price).toFixed(2)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Traditional Toppings */}
+                          {item.isMilkTea && toppings.length > 0 && (
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 mb-2">Traditional Toppings:</p>
+                              <div className="space-y-1.5">
+                                {toppings.map(topping => (
+                                  <label key={topping.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1.5 rounded-lg transition-all">
+                                    <input
+                                      type="radio"
+                                      name={`topping-${item.id}`}
+                                      checked={item.topping_id === topping.id}
+                                      onChange={() => selectTopping(item.id, topping.id)}
+                                      className="w-4 h-4 text-[#073dbe]"
+                                    />
+                                    <span className="text-xs text-slate-700 flex-1 font-medium">{topping.name}</span>
+                                    <span className="text-xs text-[#073dbe] font-bold">+₱{Number(topping.price).toFixed(2)}</span>
+                                  </label>
+                                ))}
+                              </div>
+                              {selectedTopping && (
+                                <button
+                                  onClick={() => selectTopping(item.id, null)}
+                                  className="mt-1.5 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                                >
+                                  <FiX size={12} />
+                                  Remove add-on
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
-
-                      <div className="border-t border-slate-200 pt-2 mt-2 bg-slate-50 rounded-lg p-2">
-                        <p className="flex items-center justify-between">
-                          <span className="text-xs text-slate-600 font-semibold">Item Total:</span>
-                          <span className="text-base font-bold text-[#073dbe]">₱{((Number(item.price) + Number(selectedTopping?.price || 0)) * Number(item.quantity)).toFixed(2)}</span>
-                        </p>
-                      </div>
                     </div>
-                  );
+                  )
                 })}
-              </div>
-
-              {/* Order Type */}
-              <div className="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-200">
-                <p className="font-bold text-slate-800 mb-2 text-sm">Order Type</p>
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
-                    <input
-                      type="radio"
-                      name="orderType"
-                      checked={orderType === "dine-in"}
-                      onChange={() => setOrderType("dine-in")}
-                      className="w-4 h-4 text-[#073dbe]"
-                    />
-                    <span className="font-semibold text-slate-700 text-sm">Dine In</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
-                    <input
-                      type="radio"
-                      name="orderType"
-                      checked={orderType === "takeout"}
-                      onChange={() => setOrderType("takeout")}
-                      className="w-4 h-4 text-[#073dbe]"
-                    />
-                    <span className="font-semibold text-slate-700 text-sm">Take Out</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Discount */}
-              <div className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
-                <p className="font-bold text-slate-800 mb-2 text-sm">Discount</p>
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
-                    <input
-                      type="radio"
-                      name="discount"
-                      checked={discountType === "none"}
-                      onChange={() => setDiscountType("none")}
-                      className="w-4 h-4 text-amber-600"
-                    />
-                    <span className="font-semibold text-slate-700 text-sm">No Discount</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
-                    <input
-                      type="radio"
-                      name="discount"
-                      checked={discountType === "senior"}
-                      onChange={() => setDiscountType("senior")}
-                      className="w-4 h-4 text-amber-600"
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="font-semibold text-slate-700 text-sm">Senior Citizen</span>
-                      <span className="text-amber-700 font-bold text-xs">-₱5.00</span>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg transition-all">
-                    <input
-                      type="radio"
-                      name="discount"
-                      checked={discountType === "pwd"}
-                      onChange={() => setDiscountType("pwd")}
-                      className="w-4 h-4 text-amber-600"
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="font-semibold text-slate-700 text-sm">PWD</span>
-                      <span className="text-amber-700 font-bold text-xs">-₱5.00</span>
-                    </div>
-                  </label>
-                </div>
               </div>
 
               {/* Summary */}
@@ -965,15 +1422,29 @@ export default function CashierPage() {
               {/* Checkout */}
               <button
                 onClick={handleCheckout}
-                className="w-full bg-[#073dbe] hover:bg-[#052d99] text-white py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                disabled={cart.length === 0 || !customerName.trim()}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white font-bold py-3 rounded-lg transition-all disabled:cursor-not-allowed"
               >
-                <FiShoppingCart size={18} />
-                <span>{editingOrderId ? "Update Order" : "Complete Order"}</span>
+                Checkout
               </button>
             </>
           )}
         </div>
       </div>
+
+      {/* ✅ CORRECT Modal - Keep this ONE */}
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        onConfirm={modal.onConfirm}
+        confirmText={modal.confirmText}
+        showCancel={modal.showCancel}
+      />
+
+     
     </div>
   );
 }

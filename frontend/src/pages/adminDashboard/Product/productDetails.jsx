@@ -297,7 +297,7 @@ export default function ProductDetails() {
                         <div className="font-medium text-slate-900">{v.name}</div>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-sm text-[#073dbe] font-semibold">
-                            ₱{Number(v.price).toFixed(2)}
+                            ₱{Number(v.price).toFixed(1)}
                           </span>
                           <span className="text-xs text-slate-500">
                             Stock: <span className={`font-semibold ${stock < 10 ? 'text-red-600' : 'text-green-600'}`}>
@@ -331,7 +331,7 @@ export default function ProductDetails() {
                         <div className="flex flex-wrap gap-2">
                           {v.ingredients.map((i) => (
                             <span key={i.id} className="text-xs bg-blue-50 text-[#073dbe] px-2.5 py-1 rounded-lg border border-blue-200">
-                              {i.name} ({i.amount}{i.unit})
+                              {i.name} ({parseFloat(i.amount)}{i.unit})
                             </span>
                           ))}
                         </div>

@@ -15,6 +15,9 @@ import CreateIngredientsDashboard from "./pages/adminDashboard/Ingredients/Parti
 import UpdateIngredientsDashboard from "./pages/adminDashboard/Ingredients/Partials/Update";
 import ProductEdit from "./pages/adminDashboard/Product/Edit";
 import Report from "./pages/adminDashboard/Report/salesReport";
+import CashFlowReport from "./pages/adminDashboard/Report/cashFlowReport";
+import AddCashFlowTransaction from "./pages/adminDashboard/Report/addCashFlowTransaction";
+import AddOnEditPage from "./pages/adminDashboard/Ingredients/addOnEditPage";
 
 function App() {
   return (
@@ -33,11 +36,15 @@ function App() {
           {/* <Route path="product/:id" element={<ProductDetails />} /> */}
           <Route path="/dashboard/product/edit/:id" element={<ProductEdit />} />
           <Route path="reports" element={<Report/>} />
+          <Route path="cashflow" element={<CashFlowReport/>} />
+          <Route path="cashflow/new" element={<AddCashFlowTransaction/>} />
+          <Route path="cashflow/:id/edit" element={<AddCashFlowTransaction/>} />
           <Route path="inventory" element={<Inventory/>}/>
           <Route path="settings" element={<Settings />} />
           <Route path="ingredients" element={<IngredientsDashboard/>}/>
           <Route path="ingredients/new" element={<CreateIngredientsDashboard/>}/>
           <Route path="ingredients/:id/edit" element={<UpdateIngredientsDashboard/>}/>
+          <Route path="/dashboard/addons/:id/edit" element={<AddOnEditPage />} />
         {/* <Route path="cashier" element={<Cashier />} />
          <Route path="cashier/order/" element={<OrderHistory />} />
         <Route path="cashier/order/update" element={<OrderHistory />} /> */}

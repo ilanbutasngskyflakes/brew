@@ -273,6 +273,20 @@ export default function Create({ formData = {}, isEditing }) {
       return;
     }
 
+    // Calculate calculated_cost for each variant
+    const variantsWithCost = variants.map((variant) => {
+      let totalCost = 0;
+      variant.ingredients?.forEach((ing) => {
+        const ingredientData = ingredients.find(i => i.id === ing.ingredient_id);
+        if (ingredientData) {
+          const amount = parseFloat(ing.amount) || 0;
+          const unitPrice = parseFloat(ingredientData.unit_price) || 0;
+          totalCost += amount * unitPrice;
+        }
+      });
+      return { ...variant, calculated_cost: totalCost };
+    });
+
     try {
       setLoading(true);
       const data = new FormData();
@@ -280,7 +294,7 @@ export default function Create({ formData = {}, isEditing }) {
       data.append("product_description", form.product_description || "");
       data.append("category_id", form.category_id);
       if (form.image instanceof File) data.append("image", form.image);
-      data.append("variants", JSON.stringify(variants));
+      data.append("variants", JSON.stringify(variantsWithCost)); // <-- Use variantsWithCost
 
       await api.post("/product/add", data, {
         headers: { "Content-Type": "multipart/form-data" },

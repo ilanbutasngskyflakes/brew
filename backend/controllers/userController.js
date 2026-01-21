@@ -162,7 +162,7 @@ export const deleteUser = async (req, res) => {
     const id = req.params.id || req.body.id;
     if (!id) return res.status(400).json({ message: "User id is required" });
 
-    const [result] = await db.execute("UPDATE FROM tbl_users WHERE id = ?", [
+    const [result] = await db.execute("UPDATE tbl_users SET is_deleted = 1 WHERE id = ?", [
       id,
     ]);
 

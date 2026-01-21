@@ -24,8 +24,8 @@ export const addCategory = async (req, res) => {
     }
 
     const [result] = await db.execute(
-      "INSERT INTO tbl_category (name, shortcut) VALUES (?, ?)",
-      [name.trim(), shortcut || null]
+      "INSERT INTO tbl_category (name) VALUES (?)",
+      [name.trim()]
     );
 
     res.status(201).json({ id: result.insertId, message: "Category added" });

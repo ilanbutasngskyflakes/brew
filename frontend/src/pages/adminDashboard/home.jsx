@@ -1,16 +1,9 @@
 /* eslint-disable react-hooks/immutability */
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { FiShoppingCart, FiPackage, FiActivity, FiAlertCircle, FiTrendingUp, FiArrowRight, FiUsers } from "react-icons/fi";
+import Modal from "../../components/modals";
 import api from "../../api/api";
-import { 
-  FiShoppingCart, 
-  FiPackage, 
-  FiTrendingUp, 
-  FiUsers,
-  FiAlertCircle,
-  FiActivity,
-  FiArrowRight
-} from "react-icons/fi";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -26,6 +19,10 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lowStockDetails, setLowStockDetails] = useState({
+    products: [],
+    ingredients: []
+  });
   const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
@@ -84,12 +81,15 @@ export default function Home() {
         } else if (productsRes.data?.data) {
           products = productsRes.data.data;
         }
-        console.log("Processed Products:", products.length);
+        
+        // ✅ Filter out deleted products
+        products = products.filter(p => p.deleted_at === null || !p.deleted_at);
+        console.log("Processed Products (non-deleted):", products.length);
       } catch (err) {
         console.error("Error fetching products:", err);
       }
 
-      // Fetch ingredients - Try /ingredients (plural)
+      // Fetch ingredients
       let ingredients = [];
       try {
         const ingredientsRes = await api.get("/ingredients");
@@ -115,8 +115,9 @@ export default function Home() {
           }
         }
         
-        console.log("Processed Ingredients:", ingredients);
-        console.log("Ingredients Length:", ingredients.length);
+        // ✅ Filter out deleted ingredients
+        ingredients = ingredients.filter(i => i.deleted_at === null || !i.deleted_at);
+        console.log("Processed Ingredients (non-deleted):", ingredients.length);
       } catch (err) {
         console.error("Error fetching ingredients:", err);
         console.error("Error details:", err.response?.data);
@@ -134,16 +135,38 @@ export default function Home() {
       const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
       const todayRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
 
+      // ✅ Only count products with variants that have stock
       const lowStockProducts = products.filter(product => 
-        product.variants?.some(variant => Number(variant.stock) < 10)
+        product.variants?.some(variant => 
+          variant.deleted_at === null || !variant.deleted_at && Number(variant.stock) < 10
+        )
       ).length;
 
-      // Check different possible quantity field names
+      // ✅ Only count non-deleted ingredients with low stock
       const lowStockIngredients = ingredients.filter(ingredient => {
         const qty = Number(ingredient.quantity || ingredient.stock || ingredient.amount || 0);
-        console.log(`Ingredient: ${ingredient.name || ingredient.ingredient_name}, Qty: ${qty}`);
-        return qty < 100;
+        console.log(`Ingredient: ${ingredient.name || ingredient.ingredient_name}, Qty: ${qty}, Deleted: ${ingredient.deleted_at}`);
+        return (ingredient.deleted_at === null || !ingredient.deleted_at) && qty < 100;
       }).length;
+
+      // ✅ Get low stock products list (non-deleted only)
+      const lowStockProductsList = products.filter(product => 
+        (product.deleted_at === null || !product.deleted_at) &&
+        product.variants?.some(variant => 
+          (variant.deleted_at === null || !variant.deleted_at) && Number(variant.stock) < 10
+        )
+      );
+
+      // ✅ Get low stock ingredients list (non-deleted only)
+      const lowStockIngredientsList = ingredients.filter(ingredient => {
+        const qty = Number(ingredient.quantity || ingredient.stock || ingredient.amount || 0);
+        return (ingredient.deleted_at === null || !ingredient.deleted_at) && qty < 100;
+      });
+
+      setLowStockDetails({
+        products: lowStockProductsList,
+        ingredients: lowStockIngredientsList
+      });
 
       console.log("Final Stats:", {
         totalOrders: orders.length,
@@ -399,27 +422,93 @@ export default function Home() {
 
         {/* Alerts Section */}
         {(stats.lowStockProducts > 0 || stats.lowStockIngredients > 0) && (
-          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <FiAlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
-              <div className="flex-1">
-                <h4 className="font-bold text-red-800 mb-2">Low Stock Alerts</h4>
-                <div className="space-y-1 text-sm text-red-700">
-                  {stats.lowStockProducts > 0 && (
-                    <p>{stats.lowStockProducts} product(s) running low on stock</p>
-                  )}
-                  {stats.lowStockIngredients > 0 && (
-                    <p>{stats.lowStockIngredients} ingredient(s) need restocking</p>
-                  )}
+          <div className="mt-4 space-y-3">
+            {/* Products Low Stock Alert */}
+            {stats.lowStockProducts > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <FiAlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+                  <div className="flex-1">
+                    <h4 className="font-bold text-red-800 mb-2">
+                      ⚠️ Low Product Stock ({stats.lowStockProducts})
+                    </h4>
+                    <div className="space-y-2 text-sm text-red-700 mb-3">
+                      {lowStockDetails.products.slice(0, 3).map((product, idx) => {
+                        const lowVariants = product.variants?.filter(v => Number(v.stock) < 10);
+                        return (
+                          <div key={idx} className="bg-white bg-opacity-50 px-3 py-2 rounded border border-red-200">
+                            <div className="font-medium text-slate-900">{product.product_name}</div>
+                            <div className="text-xs text-red-600 mt-1">
+                              {lowVariants?.map(v => (
+                                <div key={v.id}>
+                                  {v.variant_name}: {Number(v.stock).toFixed(0)} units
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {stats.lowStockProducts > 3 && (
+                        <div className="text-xs font-medium text-red-600">
+                          +{stats.lowStockProducts - 3} more products
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => navigate("/dashboard/product")}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
+                    >
+                      <FiPackage size={14} />
+                      Restock Products
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => navigate("/dashboard/ingredients")}
-                  className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  View Inventory
-                </button>
               </div>
-            </div>
+            )}
+
+            {/* Ingredients Low Stock Alert */}
+            {stats.lowStockIngredients > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <FiAlertCircle className="text-orange-600 flex-shrink-0 mt-0.5" size={20} />
+                  <div className="flex-1">
+                    <h4 className="font-bold text-orange-800 mb-2">
+                      ⚠️ Low Ingredient Stock ({stats.lowStockIngredients})
+                    </h4>
+                    <div className="space-y-2 text-sm text-orange-700 mb-3">
+                      {lowStockDetails.ingredients.slice(0, 3).map((ingredient, idx) => {
+                        const qty = Number(ingredient.quantity || ingredient.stock || ingredient.amount || 0);
+                        return (
+                          <div key={idx} className="bg-white bg-opacity-50 px-3 py-2 rounded border border-orange-200">
+                            <div className="font-medium text-slate-900">
+                              {ingredient.name || ingredient.ingredient_name}
+                            </div>
+                            <div className="text-xs text-orange-600 mt-1">
+                              Stock: {qty.toFixed(2)} {ingredient.unit || "units"}
+                              {qty < 50 && (
+                                <span className="ml-2 font-bold">🔴 CRITICAL</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {stats.lowStockIngredients > 3 && (
+                        <div className="text-xs font-medium text-orange-600">
+                          +{stats.lowStockIngredients - 3} more ingredients
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => navigate("/dashboard/ingredients")}
+                      className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
+                    >
+                      <FiActivity size={14} />
+                      Restock Ingredients
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -11,6 +11,7 @@ import {
   FiTrash2,
   FiImage,
   FiAlertCircle,
+  FiSearch,
 } from "react-icons/fi";
 
 export default function EditProduct() {
@@ -20,6 +21,7 @@ export default function EditProduct() {
   const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState([]);
   const [ingredients, setIngredients] = useState([]);
+  const [ingredientSearches, setIngredientSearches] = useState({});
 
   const [form, setForm] = useState({
     product_name: "",
@@ -174,16 +176,16 @@ export default function EditProduct() {
 
   const handleIngredientToggle = (variantIndex, ingredientId) => {
     const updated = [...variants];
-    const ingredients = updated[variantIndex].ingredients || [];
-    const exists = ingredients.find((i) => i.ingredient_id === ingredientId);
+    const ingredientsList = updated[variantIndex].ingredients || [];
+    const exists = ingredientsList.find((i) => i.ingredient_id === ingredientId);
 
     if (exists) {
-      updated[variantIndex].ingredients = ingredients.filter(
+      updated[variantIndex].ingredients = ingredientsList.filter(
         (i) => i.ingredient_id !== ingredientId
       );
     } else {
       updated[variantIndex].ingredients = [
-        ...ingredients,
+        ...ingredientsList,
         { ingredient_id: ingredientId, amount: "" },
       ];
     }
@@ -199,6 +201,14 @@ export default function EditProduct() {
       ing.amount = amount;
       setVariants(updated);
     }
+  };
+
+  // Filter ingredients based on search query for each variant
+  const getFilteredIngredients = (variantIndex) => {
+    const searchQuery = ingredientSearches[variantIndex] || "";
+    return ingredients.filter((ing) =>
+      ing.ingredient_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -222,6 +232,20 @@ export default function EditProduct() {
       return;
     }
 
+    // Calculate calculated_cost for each variant
+    const variantsWithCost = variants.map((variant) => {
+      let totalCost = 0;
+      variant.ingredients?.forEach((ing) => {
+        const ingredientData = ingredients.find(i => i.id === ing.ingredient_id);
+        if (ingredientData) {
+          const amount = parseFloat(ing.amount) || 0;
+          const unitPrice = parseFloat(ingredientData.unit_price) || 0;
+          totalCost += amount * unitPrice;
+        }
+      });
+      return { ...variant, calculated_cost: totalCost };
+    });
+
     try {
       setSubmitting(true);
       const data = new FormData();
@@ -234,7 +258,7 @@ export default function EditProduct() {
         data.append("image", form.image);
       }
 
-      data.append("variants", JSON.stringify(variants));
+      data.append("variants", JSON.stringify(variantsWithCost));
 
       await api.put(`/product/${id}`, data);
 
@@ -351,7 +375,8 @@ export default function EditProduct() {
                 </select>
               </div>
 
-             <div className="flex flex-col md:col-span-2">
+              {/* Product Image */}
+              <div className="flex flex-col md:col-span-2">
                 <label className="text-sm font-medium text-slate-700 mb-2">
                   Product Image
                 </label>
@@ -360,7 +385,7 @@ export default function EditProduct() {
                     type="file"
                     name="image"
                     accept="image/*"
-                    onChange={handleFormChange}
+                    onChange={handleImageChange}
                     className="hidden"
                     id="image-upload"
                     disabled={submitting}
@@ -404,7 +429,7 @@ export default function EditProduct() {
 
           {/* Variants Section */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <span className="w-1 h-5 bg-[#073dbe] rounded"></span>
                 Product Variants
@@ -426,21 +451,43 @@ export default function EditProduct() {
                   key={vIndex}
                   className="border border-slate-200 rounded-lg p-4 bg-slate-50"
                 >
-                  {/* Variant Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-slate-900 text-sm">
+                  {/* Variant Header with Search */}
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                      <span className="bg-[#073dbe] text-white w-6 h-6 rounded-lg flex items-center justify-center text-xs">
+                        {vIndex + 1}
+                      </span>
                       Variant {vIndex + 1}
                     </h3>
-                    {variants.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeVariant(vIndex)}
-                        className="text-red-600 hover:text-red-700 transition-colors"
-                        disabled={submitting}
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
-                    )}
+                    <div className="flex gap-2 items-center">
+                      {/* Search Bar */}
+                      <div className="relative w-64">
+                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                          type="text"
+                          placeholder="Search ingredients..."
+                          value={ingredientSearches[vIndex] || ""}
+                          onChange={(e) =>
+                            setIngredientSearches({
+                              ...ingredientSearches,
+                              [vIndex]: e.target.value,
+                            })
+                          }
+                          className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none bg-white"
+                          disabled={submitting}
+                        />
+                      </div>
+                      {variants.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(vIndex)}
+                          className="text-red-600 hover:text-red-700 transition-colors"
+                          disabled={submitting}
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Variant Name & Price */}
@@ -487,59 +534,67 @@ export default function EditProduct() {
                       Ingredients
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-2 bg-white rounded-lg border border-slate-200">
-                      {ingredients.map((ing) => {
-                        const selected = variant.ingredients?.find(
-                          (i) => i.ingredient_id === ing.id
-                        );
-                        return (
-                          <div
-                            key={ing.id}
-                            className={`border rounded-lg p-3 transition-all ${
-                              selected
-                                ? "border-[#073dbe] bg-blue-50"
-                                : "border-slate-200 hover:border-slate-300"
-                            }`}
-                          >
-                            <label className="flex items-start gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={!!selected}
-                                onChange={() =>
-                                  handleIngredientToggle(vIndex, ing.id)
-                                }
-                                className="mt-0.5 w-4 h-4 text-[#073dbe] rounded focus:ring-2 focus:ring-blue-200"
-                                disabled={submitting}
-                              />
-                              <div className="flex-1">
-                                <div className="font-medium text-slate-900 text-sm">
-                                  {ing.ingredient_name}
+                      {getFilteredIngredients(vIndex).length > 0 ? (
+                        getFilteredIngredients(vIndex).map((ing) => {
+                          const selected = variant.ingredients?.find(
+                            (i) => i.ingredient_id === ing.id
+                          );
+                          return (
+                            <div
+                              key={ing.id}
+                              className={`border rounded-lg p-3 transition-all ${
+                                selected
+                                  ? "border-[#073dbe] bg-blue-50"
+                                  : "border-slate-200 hover:border-slate-300"
+                              }`}
+                            >
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!selected}
+                                  onChange={() =>
+                                    handleIngredientToggle(vIndex, ing.id)
+                                  }
+                                  className="mt-0.5 w-4 h-4 text-[#073dbe] rounded focus:ring-2 focus:ring-blue-200"
+                                  disabled={submitting}
+                                />
+                                <div className="flex-1">
+                                  <div className="font-medium text-slate-900 text-sm">
+                                    {ing.ingredient_name}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    Available: {ing.quantity} {ing.unit}
+                                  </div>
+                                  {selected && (
+                                    <input
+                                      type="number"
+                                      placeholder={`Amount (${ing.unit})`}
+                                      value={selected.amount}
+                                      onChange={(e) =>
+                                        handleIngredientAmountChange(
+                                          vIndex,
+                                          ing.id,
+                                          e.target.value
+                                        )
+                                      }
+                                      step="0.01"
+                                      min="0"
+                                      className="w-full mt-2 p-2 border border-[#073dbe] rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                                      disabled={submitting}
+                                    />
+                                  )}
                                 </div>
-                                <div className="text-xs text-slate-500">
-                                  Available: {ing.quantity} {ing.unit}
-                                </div>
-                                {selected && (
-                                  <input
-                                    type="number"
-                                    placeholder={`Amount (${ing.unit})`}
-                                    value={selected.amount}
-                                    onChange={(e) =>
-                                      handleIngredientAmountChange(
-                                        vIndex,
-                                        ing.id,
-                                        e.target.value
-                                      )
-                                    }
-                                    step="0.01"
-                                    min="0"
-                                    className="w-full mt-2 p-2 border border-[#073dbe] rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                                    disabled={submitting}
-                                  />
-                                )}
-                              </div>
-                            </label>
-                          </div>
-                        );
-                      })}
+                              </label>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="col-span-full text-center py-6">
+                          <p className="text-slate-500 text-sm">
+                            No ingredients found
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

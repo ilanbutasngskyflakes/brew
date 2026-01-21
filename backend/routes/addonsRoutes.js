@@ -1,9 +1,21 @@
 // backend/routes/toppingRoutes.js
 const express = require("express");
 const router = express.Router();
-const addonsController = require("../controllers/addonsController");
+const addOnsController = require("../controllers/addonsController");
 
-// GET all toppings
-router.get("/", addonsController.getAddOns);
+// GET all add-ons
+router.get("/", addOnsController.getAddOns);
+
+// GET single add-on by ID
+router.get("/:id", addOnsController.getAddOn);
+
+// CREATE new add-on
+router.post("/add", addOnsController.addAddOn);  // ✅ POST to /add
+
+// UPDATE add-on
+router.put("/:id", addOnsController.updateAddOn);
+
+// DELETE add-on
+router.delete("/:id", addOnsController.deleteAddOn);
 
 module.exports = router;

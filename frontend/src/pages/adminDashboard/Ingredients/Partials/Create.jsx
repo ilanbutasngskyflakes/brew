@@ -10,6 +10,7 @@ export default function Create() {
     ingredient_name: "",
     quantity: "",
     unit: "ml",
+    unit_price: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [modal, setModal] = useState({ show: false, type: "", message: "" });
@@ -32,6 +33,47 @@ export default function Create() {
     return { quantity: value, unit };
   };
 
+  // Convert price when unit changes (like L to ml or kg to g)
+  const convertPriceWithUnit = (priceEntered, fromUnit, toUnit) => {
+    if (!priceEntered) return "";
+
+    const price = parseFloat(priceEntered);
+    if (isNaN(price)) return "";
+
+    // If switching FROM L/kg TO ml/g (1000x more units, so price per unit gets smaller)
+    if ((fromUnit === "L" && toUnit === "ml") || (fromUnit === "kg" && toUnit === "g")) {
+      return (price / 1000).toString();
+    }
+
+    // If switching FROM ml/g TO L/kg (1000x fewer units, so price per unit gets bigger)
+    if ((fromUnit === "ml" && toUnit === "L") || (fromUnit === "g" && toUnit === "kg")) {
+      return (price * 1000).toString();
+    }
+
+    // No conversion needed
+    return price.toString();
+  };
+
+  // Calculate unit price based on entry unit - returns as string to preserve precision
+  const calculateUnitPrice = (priceEntered, unit) => {
+    if (!priceEntered) return "";
+    
+    const price = parseFloat(priceEntered);
+    if (isNaN(price)) return "";
+
+    let result = price;
+
+    // If user enters price in L or kg, convert to base unit (ml or g)
+    if (unit === "L") {
+      result = price / 1000; // ₱/ml
+    } else if (unit === "kg") {
+      result = price / 1000; // ₱/g
+    }
+
+    // Return as string with full precision
+    return result.toString();
+  };
+
   const showModal = (type, message) => {
     setModal({ show: true, type, message });
   };
@@ -51,10 +93,13 @@ export default function Create() {
 
       // Convert to base units before submitting
       const converted = convertToBaseUnit(formData.quantity, formData.unit);
+      const calculatedPrice = calculateUnitPrice(formData.unit_price, formData.unit);
+
       const dataToSubmit = {
         ingredient_name: formData.ingredient_name,
-        quantity: converted.quantity,
+        quantity: converted.quantity.toString(),
         unit: converted.unit,
+        unit_price: calculatedPrice !== "" ? calculatedPrice : null,
       };
 
       await api.post("/ingredients/add", dataToSubmit);
@@ -68,10 +113,21 @@ export default function Create() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    if (name === "unit") {
+      // Auto convert price when unit changes
+      const newPrice = convertPriceWithUnit(formData.unit_price, formData.unit, value);
+      setFormData((prev) => ({
+        ...prev,
+        unit: value,
+        unit_price: newPrice,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   return (
@@ -121,8 +177,9 @@ export default function Create() {
               />
             </div>
 
-            {/* Quantity & Unit */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Quantity, Unit, and Unit Price */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Quantity */}
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-slate-700 mb-2">
                   Quantity <span className="text-red-600">*</span>
@@ -134,7 +191,7 @@ export default function Create() {
                   onChange={handleChange}
                   onWheel={(e) => e.target.blur()}
                   placeholder="e.g., 1000"
-                  step="0.01"
+                  step="any"
                   min="0"
                   className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
                   required
@@ -142,6 +199,7 @@ export default function Create() {
                 />
               </div>
 
+              {/* Unit */}
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-slate-700 mb-2">
                   Unit <span className="text-red-600">*</span>
@@ -160,14 +218,42 @@ export default function Create() {
                   <option value="pcs">pcs (pieces)</option>
                 </select>
               </div>
+
+              {/* Unit Price */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-slate-700 mb-2">
+                  Price per {formData.unit || "unit"} (₱)
+                </label>
+                <input
+                  type="number"
+                  name="unit_price"
+                  value={formData.unit_price}
+                  onChange={handleChange}
+                  onWheel={(e) => e.target.blur()}
+                  placeholder="e.g., 0.0015 or 80.00"
+                  step="any"
+                  min="0"
+                  className="p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                  disabled={submitting}
+                />
+              </div>
             </div>
+
+            {/* Conversion Preview */}
+            {formData.unit_price && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-slate-700">
+                  <span className="font-semibold text-green-700">Cost per base unit:</span>{" "}
+                  ₱{calculateUnitPrice(formData.unit_price, formData.unit)}/
+                  {formData.unit === "L" ? "ml" : formData.unit === "kg" ? "g" : formData.unit}
+                </p>
+              </div>
+            )}
 
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-slate-700">
-                <span className="font-semibold text-[#073dbe]">Tip:</span> Liters
-                will be automatically converted to ml, and kilograms to grams for
-                consistent tracking.
+                <span className="font-semibold text-[#073dbe]">Tip:</span> Price automatically adjusts when you change units. Switch from L→ml or kg→g and the price will convert proportionally.
               </p>
             </div>
 

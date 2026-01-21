@@ -5,12 +5,11 @@ const express = require('express')
 const app = express();
 
 const cors = require('cors');
-app.use(cors()); // single use
+app.use(cors()); // Keep ONLY this one
 
 const port = process.env.PORT || 8080;
 
 // Middleware
-// app.use(cors()); // removed duplicate
 app.use(express.json());
 
 // Test DB connection if available
@@ -54,8 +53,35 @@ app.use("/equipment", equipmentRoutes);
 const addonsRoutes = require ('./routes/addonsRoutes')
 app.use("/addons", addonsRoutes);
 
+const cashFlowRoutes = require('./routes/cashFlowRoutes');
+app.use('/cashflow', cashFlowRoutes); 
+
 
 // Start server
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+// Run migrations and start server
+async function migrateUnitPrice() {
+  try {
+    // Check if column exists
+    const [rows] = await db.execute(
+      "SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tbl_ingredients' AND column_name='unit_price'"
+    );
+
+    if (!rows.length) {
+      await db.execute("ALTER TABLE tbl_ingredients ADD COLUMN unit_price DECIMAL(10,3) NULL");
+      
+    } else {
+      await db.execute("ALTER TABLE tbl_ingredients MODIFY unit_price DECIMAL(10,3) NULL");
+      
+    }
+  } catch (err) { 
+  }
+}
+
+async function init() {
+  await migrateUnitPrice();
+  app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+}
+
+init();

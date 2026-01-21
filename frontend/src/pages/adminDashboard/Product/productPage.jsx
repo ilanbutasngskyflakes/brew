@@ -137,6 +137,27 @@ export default function ProductDashboard() {
 
   const groupedProducts = productsByCategory();
 
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      showModal("error", "Error", "Category name is required!");
+      return;
+    }
+    try {
+      await api.post("/category/add", {
+        name: newCategoryName
+      });
+      setShowAddCategoryModal(false);
+      setNewCategoryName("");
+      await loadCategories();
+      showModal("success", "Success", "Category added!");
+    } catch (err) {
+      showModal("error", "Error", "Failed to add category.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -177,13 +198,22 @@ export default function ProductDashboard() {
                 Manage your menu items and variants ({products.length} total)
               </p>
             </div>
-            <Link
-              to="/dashboard/product/new"
-              className="w-full lg:w-auto bg-[#073dbe] hover:bg-[#052d99] text-white px-5 py-2.5 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
-            >
-              <FiPlus size={18} />
-              Add Product
-            </Link>
+            <div className="flex gap-2 w-full lg:w-auto">
+              <button
+                onClick={() => setShowAddCategoryModal(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
+              >
+                <FiPlus size={18} />
+                Add Category
+              </button>
+              <Link
+                to="/dashboard/product/new"
+                className="bg-[#073dbe] hover:bg-[#052d99] text-white px-5 py-2.5 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm"
+              >
+                <FiPlus size={18} />
+                Add Product
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -374,7 +404,14 @@ export default function ProductDashboard() {
                                             </span>
                                           </div>
                                         </div>
-                                        <span className="text-[#073dbe] font-bold text-sm">₱{Number(v.price).toFixed(2)}</span>
+                                        <div className="text-right">
+                                          <div className="text-[#073dbe] font-bold text-sm">₱{Number(v.price).toFixed(2)}</div>
+                                          {v.calculated_cost && (
+                                            <div className="text-xs text-slate-600 mt-1">
+                                              Cost: <span className="font-semibold text-slate-700">₱{Number(v.calculated_cost).toFixed(2)}</span>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     
                                       {v.ingredients?.length > 0 && (
@@ -383,7 +420,7 @@ export default function ProductDashboard() {
                                           <div className="flex flex-wrap gap-1">
                                             {v.ingredients.map((i) => (
                                               <span key={i.id} className="text-xs bg-white px-2 py-0.5 rounded border border-slate-200">
-                                                {i.name} ({i.amount}{i.unit})
+                                                {i.name} ({parseFloat(i.amount)}{i.unit})
                                               </span>
                                             ))}
                                           </div>
@@ -422,6 +459,38 @@ export default function ProductDashboard() {
           </div>
         )}
       </div>
+
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Add Category</h2>
+            <div className="mb-3">
+              <label className="block font-semibold mb-1">Category Name</label>
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg"
+                placeholder="Enter category name"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowAddCategoryModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCategory}
+                className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .scrollbar-thin::-webkit-scrollbar {

@@ -17,12 +17,13 @@ exports.getProductById = async (req, res) => {
 
     const product = products[0];
 
-    // Get variants with ingredients
+    // Get variants with ingredients and calculated_cost
     const [variants_data] = await conn.execute(
       `SELECT 
          v.id,
          v.name,
          v.price,
+         v.calculated_cost,
          i.id AS ingredient_id,
          i.ingredient_name as name,
          i.unit,
@@ -44,7 +45,8 @@ exports.getProductById = async (req, res) => {
           id: row.id,
           name: row.name,
           price: row.price,
-          quantity: null, // Will calculate below
+          calculated_cost: row.calculated_cost || 0,
+          quantity: null,
           ingredients: []
         });
       }
@@ -56,7 +58,7 @@ exports.getProductById = async (req, res) => {
           name: row.name,
           unit: row.unit,
           amount: row.amount,
-          quantity: row.ingredient_quantity
+          quantity: Number(row.ingredient_quantity) || 0
         };
         variantsMap.get(row.id).ingredients.push(ingredient);
       }
@@ -65,14 +67,13 @@ exports.getProductById = async (req, res) => {
     // Calculate quantity for each variant based on ingredient availability
     const variants = Array.from(variantsMap.values()).map(variant => {
       if (variant.ingredients.length === 0) {
-        variant.quantity = 0; // No ingredients = can't make any
+        variant.quantity = 0;
       } else {
-        // Calculate how many units can be made based on each ingredient
         const possibleUnits = variant.ingredients.map(ing => {
           if (!ing.amount || ing.amount === 0) return Infinity;
-          return Math.floor(ing.quantity / ing.amount);
+          const qty = Number(ing.quantity) || 0;
+          return Math.floor(qty / ing.amount);
         });
-        // The quantity is limited by the ingredient with the least availability
         variant.quantity = Math.min(...possibleUnits);
         if (variant.quantity === Infinity) variant.quantity = 0;
       }
@@ -100,13 +101,14 @@ exports.getAllProducts = async (req, res) => {
       "SELECT * FROM tbl_products WHERE is_deleted = 0 ORDER BY id DESC"
     );
 
-    // Get all variants with ingredients and their quantities
+    // Get all variants with ingredients, quantities, and calculated_cost
     const [variants_data] = await conn.execute(
       `SELECT 
          v.product_id,
          v.id,
          v.name,
          v.price,
+         v.calculated_cost,
          i.id AS ingredient_id,
          i.ingredient_name as name,
          i.unit,
@@ -136,6 +138,7 @@ exports.getAllProducts = async (req, res) => {
           id: row.id,
           name: row.name,
           price: row.price,
+          calculated_cost: row.calculated_cost || 0,
           quantity: null,
           ingredients: []
         });
@@ -148,7 +151,7 @@ exports.getAllProducts = async (req, res) => {
           name: row.name,
           unit: row.unit,
           amount: row.amount,
-          quantity: row.ingredient_quantity
+          quantity: Number(row.ingredient_quantity) || 0
         });
       }
     });
@@ -160,7 +163,8 @@ exports.getAllProducts = async (req, res) => {
       } else {
         const possibleUnits = variant.ingredients.map(ing => {
           if (!ing.amount || ing.amount === 0) return Infinity;
-          return Math.floor(ing.quantity / ing.amount);
+          const qty = Number(ing.quantity) || 0;
+          return Math.floor(qty / ing.amount);
         });
         variant.quantity = Math.min(...possibleUnits);
         if (variant.quantity === Infinity || variant.quantity < 0) variant.quantity = 0;
@@ -227,6 +231,7 @@ exports.getProductsFull = async (req, res) => {
         v.id AS variant_id,
         v.name AS variant_name,
         v.price,
+        v.calculated_cost,
         i.id AS ingredient_id,
         i.ingredient_name,
         i.unit,
@@ -267,6 +272,7 @@ exports.getProductsFull = async (req, res) => {
             id: row.variant_id,
             name: row.variant_name,
             price: row.price,
+            calculated_cost: row.calculated_cost || 0,
             ingredients: [],
           };
           product.variants.push(variant);
@@ -278,7 +284,7 @@ exports.getProductsFull = async (req, res) => {
             name: row.ingredient_name,
             unit: row.unit,
             amount: row.required_amount,
-            available: row.available_quantity
+            available: Number(row.available_quantity) || 0
           });
         }
       }
@@ -372,11 +378,12 @@ exports.addProductFull = async (req, res) => {
     for (let variant of variantsArray) {
       const variant_name = variant.variant_name || variant.name || null;
       const price = variant.price !== undefined && variant.price !== "" ? Number(variant.price) : null;
+      const calculated_cost = variant.calculated_cost !== undefined ? Number(variant.calculated_cost) : 0;
 
       const [variantResult] = await conn.execute(
-        `INSERT INTO tbl_product_variants (product_id, name, price)
-         VALUES (?, ?, ?)`,
-        [product_id, variant_name, price]
+        `INSERT INTO tbl_product_variants (product_id, name, price, calculated_cost)
+         VALUES (?, ?, ?, ?)`,
+        [product_id, variant_name, price, calculated_cost]
       );
       const variant_id = variantResult.insertId;
 
@@ -490,6 +497,7 @@ exports.updateProduct = async (req, res) => {
         const price = variant.price !== undefined && variant.price !== "" 
           ? Number(variant.price) 
           : null;
+        const calculated_cost = variant.calculated_cost !== undefined ? Number(variant.calculated_cost) : 0;
 
         let variant_id;
 
@@ -498,18 +506,18 @@ exports.updateProduct = async (req, res) => {
           console.log(`📝 Updating variant ${variant.id}:`, variant_name);
           await conn.execute(
             `UPDATE tbl_product_variants 
-             SET name = ?, price = ? 
+             SET name = ?, price = ?, calculated_cost = ? 
              WHERE id = ?`,
-            [variant_name, price, variant.id]
+            [variant_name, price, calculated_cost, variant.id]
           );
           variant_id = variant.id;
         } else {
           // INSERT new variant
           console.log(`➕ Adding new variant:`, variant_name);
           const [variantResult] = await conn.execute(
-            `INSERT INTO tbl_product_variants (product_id, name, price)
-             VALUES (?, ?, ?)`,
-            [id, variant_name, price]
+            `INSERT INTO tbl_product_variants (product_id, name, price, calculated_cost)
+             VALUES (?, ?, ?, ?)`,
+            [id, variant_name, price, calculated_cost]
           );
           variant_id = variantResult.insertId;
           console.log(`✅ New variant created with ID:`, variant_id);
@@ -554,12 +562,13 @@ exports.updateProduct = async (req, res) => {
     );
     const product = products[0];
 
-    // Get variants with ingredients
+    // Get variants with ingredients and calculated_cost
     const [variants_data] = await conn.execute(
       `SELECT 
          v.id,
          v.name,
          v.price,
+         v.calculated_cost,
          i.id AS ingredient_id,
          i.ingredient_name,
          i.unit,
@@ -580,6 +589,7 @@ exports.updateProduct = async (req, res) => {
           id: row.id,
           name: row.name,
           price: row.price,
+          calculated_cost: row.calculated_cost || 0,
           ingredients: []
         });
       }

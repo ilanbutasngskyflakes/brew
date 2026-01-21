@@ -23,6 +23,7 @@ export default function SalesReportPage() {
         setLoading(true);
         const { data } = await api.get("/order");
         setOrders(data || []);
+        console.log("Orders loaded:", data);
       } catch (err) {
         showModal("error", "Failed to load orders. Please try again.");
       } finally {
@@ -41,10 +42,18 @@ export default function SalesReportPage() {
     setModal({ show: false, type: "", message: "" });
   };
 
-  // Calculate discount amount based on discounted type
+  // Calculate discount amount based on per-item discounts
   const getDiscountAmount = (order) => {
-    if (order.discounted && order.discounted !== 'none') {
-      return 5; // ₱5 discount for student, senior, pwd
+    // ✅ FIXED: Calculate total discount from items (each item with discount = 5)
+    if (order.items && order.items.length > 0) {
+      return order.items.reduce((sum, item) => {
+        // Only count items that have a discount type
+        if (item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')) {
+          // Discount is 5 per item (not per quantity)
+          return sum + 5;
+        }
+        return sum;
+      }, 0);
     }
     return 0;
   };
@@ -86,7 +95,12 @@ export default function SalesReportPage() {
   const calculateStats = (filteredOrders) => {
     const totalSales = filteredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const totalOrders = filteredOrders.length;
-    const totalDiscount = filteredOrders.reduce((sum, order) => sum + getDiscountAmount(order), 0);
+    
+    // ✅ FIXED: Calculate total discount from per-item discounts ONLY
+    const totalDiscount = filteredOrders.reduce((sum, order) => {
+      return sum + getDiscountAmount(order);
+    }, 0);
+    
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     const productSales = {};
@@ -113,7 +127,7 @@ export default function SalesReportPage() {
     return {
       totalSales,
       totalOrders,
-      totalDiscount,
+      totalDiscount,  // ✅ Per-item discount total
       averageOrderValue,
       topProducts
     };
@@ -169,17 +183,24 @@ export default function SalesReportPage() {
         ...stats.topProducts.map(p => [p.product, p.variant, p.quantity, `₱${p.revenue.toFixed(2)}`]),
         [],
         ['Order Details'],
-        ['Order ID', 'Date', 'Discount Type', 'Discount Amount', 'Total', 'Items']
+        ['Order ID', 'Date', 'Discounted Items', 'Total Discount', 'Total', 'Items']
       ];
 
-      const orderData = filteredOrders.map(order => [
-        order.id,
-        new Date(order.created_at).toLocaleString(),
-        order.discounted !== 'none' ? order.discounted.toUpperCase() : 'Regular',
-        getDiscountAmount(order) > 0 ? `₱${getDiscountAmount(order).toFixed(2)}` : '-',
-        `₱${Number(order.total).toFixed(2)}`,
-        order.items?.length || 0
-      ]);
+      const orderData = filteredOrders.map(order => {
+        // ✅ NEW: Get discounted items list
+        const discountedItems = order.items?.filter(item => 
+          item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')
+        ) || [];
+        
+        return [
+          order.id,
+          new Date(order.created_at).toLocaleString(),
+          discountedItems.map(item => `${item.product_name} (${item.discount_type.toUpperCase()})`).join(', ') || '-',
+          getDiscountAmount(order) > 0 ? `₱${getDiscountAmount(order).toFixed(2)}` : '-',
+          `₱${Number(order.total).toFixed(2)}`,
+          order.items?.length || 0
+        ];
+      });
 
       const allData = [...summaryData, ...orderData];
       const ws = XLSX.utils.aoa_to_sheet(allData);
@@ -189,7 +210,7 @@ export default function SalesReportPage() {
       ws['!cols'] = [
         { wch: 15 },
         { wch: 20 },
-        { wch: 15 },
+        { wch: 30 },
         { wch: 15 },
         { wch: 12 },
         { wch: 10 }
@@ -313,6 +334,7 @@ export default function SalesReportPage() {
             font-size: 9px;
             font-weight: 600;
             text-transform: uppercase;
+            margin-right: 4px;
           }
           .footer {
             text-align: center;
@@ -408,24 +430,33 @@ export default function SalesReportPage() {
                 <th style="width: 60px;">ID</th>
                 <th>Date & Time</th>
                 <th style="text-align: center; width: 50px;">Items</th>
-                <th style="text-align: center; width: 80px;">Discount</th>
+                <th style="text-align: center; width: 150px;">Discounted Items</th>
                 <th style="text-align: right; width: 80px;">Total</th>
               </tr>
             </thead>
             <tbody>
-              ${filteredOrders.map(order => `
-                <tr>
-                  <td style="font-weight: bold; color: #073dbe;">#${order.id}</td>
-                  <td>${new Date(order.created_at).toLocaleString()}</td>
-                  <td style="text-align: center;">${order.items?.length || 0}</td>
-                  <td style="text-align: center;">
-                    ${order.discounted !== 'none' 
-                      ? `<span class="discount-badge">${order.discounted}</span> ₱5` 
-                      : '-'}
-                  </td>
-                  <td style="text-align: right; font-weight: bold;">₱${Number(order.total).toFixed(2)}</td>
-                </tr>
-              `).join('')}
+              ${filteredOrders.map(order => {
+                // ✅ FIXED: Only show items that have discounts
+                const discountedItems = order.items?.filter(item => 
+                  item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')
+                ) || [];
+                
+                const orderDiscount = getDiscountAmount(order);
+                
+                return `
+                  <tr>
+                    <td style="font-weight: bold; color: #073dbe;">#${order.id}</td>
+                    <td>${new Date(order.created_at).toLocaleString()}</td>
+                    <td style="text-align: center;">${order.items?.length || 0}</td>
+                    <td style="text-align: center;">
+                      ${discountedItems.length > 0 
+                        ? discountedItems.map(item => `<span class="discount-badge">${item.product_name} (${item.discount_type.toUpperCase()})</span>`).join('') + `<br/>Total: ₱${orderDiscount.toFixed(2)}`
+                        : 'None'}
+                    </td>
+                    <td style="text-align: right; font-weight: bold;">₱${Number(order.total).toFixed(2)}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         ` : '<p style="text-align: center; color: #64748b; padding: 20px;">No orders for this period.</p>'}
@@ -563,25 +594,15 @@ export default function SalesReportPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="bg-green-50 p-2.5 rounded-lg text-green-600 font-bold text-lg">
                 ₱
               </div>
             </div>
-            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Sales</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Sales (Revenue)</div>
             <div className="text-2xl font-bold text-slate-900">₱{stats.totalSales.toFixed(2)}</div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-blue-50 p-2.5 rounded-lg">
-                <FiShoppingCart className="text-[#073dbe]" size={20} />
-              </div>
-            </div>
-            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Orders</div>
-            <div className="text-2xl font-bold text-slate-900">{stats.totalOrders}</div>
           </div>
 
           <div className="bg-white rounded-lg border border-slate-200 p-4">
@@ -596,12 +617,12 @@ export default function SalesReportPage() {
 
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-purple-50 p-2.5 rounded-lg text-purple-600 font-bold text-lg">
-                ₱
+              <div className="bg-blue-50 p-2.5 rounded-lg text-blue-600 font-bold text-lg">
+                #
               </div>
             </div>
-            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Avg Order Value</div>
-            <div className="text-2xl font-bold text-slate-900">₱{stats.averageOrderValue.toFixed(2)}</div>
+            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Orders</div>
+            <div className="text-2xl font-bold text-slate-900">{stats.totalOrders}</div>
           </div>
         </div>
 
@@ -678,40 +699,73 @@ export default function SalesReportPage() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Order ID</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Items</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Items Ordered</th>
                     <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 uppercase">Discount</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-[#073dbe] text-sm">#{order.id}</div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 text-sm">
-                        {new Date(order.created_at).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 text-sm">
-                        {order.items?.length || 0} items
-                      </td>
-                      <td className="px-4 py-3 text-center text-sm">
-                        {order.discounted !== 'none' ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="inline-block bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold uppercase">
-                              {order.discounted}
-                            </span>
-                            <span className="text-red-600 font-bold">₱5</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-slate-900 text-sm">
-                        ₱{Number(order.total).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredOrders.map(order => {
+                    const discountedItems = order.items?.filter(item => 
+                      item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')
+                    ) || [];
+                    
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-[#073dbe] text-sm">#{order.id}</div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-sm">
+                          {new Date(order.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-sm">
+                          {order.items && order.items.length > 0 ? (
+                            <div className="space-y-1">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-2 text-xs">
+                                  <span className="font-medium text-slate-900">
+                                    {item.product_name} ({item.variant_name})
+                                  </span>
+                                  <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold">
+                                    x{item.quantity}
+                                  </span>
+                                  {item.discount_type && item.discount > 0 && (
+                                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">
+                                      {item.discount_type.toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">No items</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center text-sm">
+                          {discountedItems.length > 0 ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex flex-wrap gap-1 justify-center">
+                                {discountedItems.map((item, idx) => (
+                                  <span 
+                                    key={idx}
+                                    className="inline-block bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold uppercase"
+                                  >
+                                    {item.discount_type}
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="text-red-600 font-bold">-₱{getDiscountAmount(order).toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-900 text-sm">
+                          ₱{Number(order.total).toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
