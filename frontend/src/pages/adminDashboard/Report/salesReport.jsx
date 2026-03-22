@@ -6,9 +6,14 @@ import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
 import { FiDownload, FiPrinter, FiCalendar, FiTrendingUp, FiShoppingCart, FiArrowLeft, FiAlertCircle, FiCheckCircle } from "react-icons/fi";
 import * as XLSX from 'xlsx';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function SalesReportPage() {
   const [orders, setOrders] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [reportType, setReportType] = useState("daily");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -16,22 +21,28 @@ export default function SalesReportPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ show: false, type: "", message: "" });
   const navigate = useNavigate();
+  const [selectedNetIncomePeriod, setSelectedNetIncomePeriod] = useState("monthly");
 
   useEffect(() => {
-    const loadOrders = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const { data } = await api.get("/order");
-        setOrders(data || []);
-        console.log("Orders loaded:", data);
+        const [ordersRes, transactionsRes] = await Promise.all([
+          api.get("/order"),
+          api.get("/cashflow")
+        ]);
+        setOrders(ordersRes.data || []);
+        setTransactions(transactionsRes.data || []);
+        console.log("Orders loaded:", ordersRes.data);
+        console.log("Transactions loaded:", transactionsRes.data);
       } catch (err) {
-        showModal("error", "Failed to load orders. Please try again.");
+        showModal("error", "Failed to load data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadOrders();
+    loadData();
   }, []);
 
   const showModal = (type, message) => {
@@ -42,14 +53,10 @@ export default function SalesReportPage() {
     setModal({ show: false, type: "", message: "" });
   };
 
-  // Calculate discount amount based on per-item discounts
   const getDiscountAmount = (order) => {
-    // ✅ FIXED: Calculate total discount from items (each item with discount = 5)
     if (order.items && order.items.length > 0) {
       return order.items.reduce((sum, item) => {
-        // Only count items that have a discount type
         if (item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')) {
-          // Discount is 5 per item (not per quantity)
           return sum + 5;
         }
         return sum;
@@ -96,7 +103,6 @@ export default function SalesReportPage() {
     const totalSales = filteredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const totalOrders = filteredOrders.length;
     
-    // ✅ FIXED: Calculate total discount from per-item discounts ONLY
     const totalDiscount = filteredOrders.reduce((sum, order) => {
       return sum + getDiscountAmount(order);
     }, 0);
@@ -127,11 +133,121 @@ export default function SalesReportPage() {
     return {
       totalSales,
       totalOrders,
-      totalDiscount,  // ✅ Per-item discount total
+      totalDiscount,
       averageOrderValue,
       topProducts
     };
   };
+
+  const calculateNetIncomeByPeriod = () => {
+    const now = new Date();
+    
+    const getPeriodOrders = (periodType) => {
+      return orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        
+        switch(periodType) {
+          case "weekly":
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            return orderDate >= weekStart && orderDate <= weekEnd;
+            
+          case "monthly":
+            return orderDate.getFullYear() === now.getFullYear() && 
+                   orderDate.getMonth() === now.getMonth();
+            
+          case "quarterly":
+            const quarter = Math.floor(now.getMonth() / 3);
+            const orderQuarter = Math.floor(orderDate.getMonth() / 3);
+            return orderDate.getFullYear() === now.getFullYear() && 
+                   orderQuarter === quarter;
+            
+          case "semi-annual":
+            const half = now.getMonth() < 6 ? 0 : 1;
+            const orderHalf = orderDate.getMonth() < 6 ? 0 : 1;
+            return orderDate.getFullYear() === now.getFullYear() && 
+                   orderHalf === half;
+            
+          case "annual":
+            return orderDate.getFullYear() === now.getFullYear();
+            
+          default:
+            return true;
+        }
+      });
+    };
+
+    const getPeriodExpenses = (periodType) => {
+      return transactions.filter(tx => {
+        if (tx.type !== 'payout') return false;
+        
+        const txDate = new Date(tx.date || tx.created_at);
+        
+        switch(periodType) {
+          case "weekly":
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            return txDate >= weekStart && txDate <= weekEnd;
+            
+          case "monthly":
+            return txDate.getFullYear() === now.getFullYear() && 
+                   txDate.getMonth() === now.getMonth();
+            
+          case "quarterly":
+            const quarter = Math.floor(now.getMonth() / 3);
+            const txQuarter = Math.floor(txDate.getMonth() / 3);
+            return txDate.getFullYear() === now.getFullYear() && 
+                   txQuarter === quarter;
+            
+          case "semi-annual":
+            const half = now.getMonth() < 6 ? 0 : 1;
+            const txHalf = txDate.getMonth() < 6 ? 0 : 1;
+            return txDate.getFullYear() === now.getFullYear() && 
+                   txHalf === half;
+            
+          case "annual":
+            return txDate.getFullYear() === now.getFullYear();
+            
+          default:
+            return true;
+        }
+      });
+    };
+    
+    const calculateForPeriod = (periodOrders, periodExpenses) => {
+      const grossIncome = periodOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+      const totalDiscounts = periodOrders.reduce((sum, order) => {
+        return sum + getDiscountAmount(order);
+      }, 0);
+      const totalExpenses = periodExpenses.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+      const netIncome = grossIncome - totalDiscounts - totalExpenses;
+      
+      return {
+        grossIncome,
+        discounts: totalDiscounts,
+        expenses: totalExpenses,
+        netIncome
+      };
+    };
+    
+    return {
+      weekly: calculateForPeriod(getPeriodOrders("weekly"), getPeriodExpenses("weekly")),
+      monthly: calculateForPeriod(getPeriodOrders("monthly"), getPeriodExpenses("monthly")),
+      quarterly: calculateForPeriod(getPeriodOrders("quarterly"), getPeriodExpenses("quarterly")),
+      semiAnnual: calculateForPeriod(getPeriodOrders("semi-annual"), getPeriodExpenses("semi-annual")),
+      annual: calculateForPeriod(getPeriodOrders("annual"), getPeriodExpenses("annual"))
+    };
+  };
+
+  const netIncomeByPeriod = calculateNetIncomeByPeriod();
 
   const filteredOrders = filterOrdersByPeriod();
   const stats = calculateStats(filteredOrders);
@@ -167,12 +283,19 @@ export default function SalesReportPage() {
 
   const exportToExcel = () => {
     try {
+      const period = netIncomeByPeriod[selectedNetIncomePeriod];
       const summaryData = [
         ['Barcelo Cafe - Sales Report'],
         ['Period:', getPeriodLabel()],
         ['Generated:', new Date().toLocaleString()],
         [],
-        ['Summary Statistics'],
+        ['Financial Summary'],
+        ['Gross Income:', `₱${period.grossIncome.toFixed(2)}`],
+        ['Discounts:', `-₱${period.discounts.toFixed(2)}`],
+        ['Operating Expenses:', `-₱${period.expenses.toFixed(2)}`],
+        ['Net Income:', `₱${period.netIncome.toFixed(2)}`],
+        [],
+        ['Overall Statistics'],
         ['Total Sales:', `₱${stats.totalSales.toFixed(2)}`],
         ['Total Orders:', stats.totalOrders],
         ['Total Discounts:', `₱${stats.totalDiscount.toFixed(2)}`],
@@ -187,7 +310,6 @@ export default function SalesReportPage() {
       ];
 
       const orderData = filteredOrders.map(order => {
-        // ✅ NEW: Get discounted items list
         const discountedItems = order.items?.filter(item => 
           item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')
         ) || [];
@@ -225,6 +347,7 @@ export default function SalesReportPage() {
   };
 
   const printReport = () => {
+    const period = netIncomeByPeriod[selectedNetIncomePeriod];
     const printWindow = window.open('', '_blank', 'height=800,width=800');
     if (!printWindow) {
       showModal("error", "Popup blocked. Please allow popups to print.");
@@ -379,20 +502,20 @@ export default function SalesReportPage() {
 
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-label">Total Sales</div>
-            <div class="stat-value">₱${stats.totalSales.toFixed(2)}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Orders</div>
-            <div class="stat-value">${stats.totalOrders}</div>
+            <div class="stat-label">Gross Income</div>
+            <div class="stat-value">₱${period.grossIncome.toFixed(2)}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Discounts</div>
-            <div class="stat-value">₱${stats.totalDiscount.toFixed(2)}</div>
+            <div class="stat-value">-₱${period.discounts.toFixed(2)}</div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Avg Order</div>
-            <div class="stat-value">₱${stats.averageOrderValue.toFixed(2)}</div>
+            <div class="stat-label">Expenses</div>
+            <div class="stat-value">-₱${period.expenses.toFixed(2)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Net Income</div>
+            <div class="stat-value">₱${period.netIncome.toFixed(2)}</div>
           </div>
         </div>
 
@@ -436,7 +559,6 @@ export default function SalesReportPage() {
             </thead>
             <tbody>
               ${filteredOrders.map(order => {
-                // ✅ FIXED: Only show items that have discounts
                 const discountedItems = order.items?.filter(item => 
                   item.discount_type && (item.discount_type === 'senior' || item.discount_type === 'pwd')
                 ) || [];
@@ -680,7 +802,7 @@ export default function SalesReportPage() {
         )}
 
         {/* Orders List */}
-        <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6">
+        <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6 mb-4">
           <h3 className="text-lg font-bold text-slate-900 mb-4">
             Orders for {getPeriodLabel()} ({filteredOrders.length})
           </h3>
@@ -771,44 +893,130 @@ export default function SalesReportPage() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Modal */}
-      {modal.show && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                modal.type === "success" ? "bg-green-100" : "bg-red-100"
-              }`}>
-                {modal.type === "success" ? (
-                  <FiCheckCircle size={24} className="text-green-600" />
-                ) : (
-                  <FiAlertCircle size={24} className="text-red-600" />
-                )}
+        {/* Net Income by Period */}
+        <div className="bg-white rounded-lg border border-slate-200 p-4 lg:p-6 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-slate-900">Net Income Breakdown</h3>
+            <select
+              value={selectedNetIncomePeriod}
+              onChange={(e) => setSelectedNetIncomePeriod(e.target.value)}
+              className="px-3 py-2 border border-slate-300 rounded-lg focus:border-[#073dbe] focus:ring-2 focus:ring-blue-100 transition-all outline-none cursor-pointer text-sm"
+            >
+              <option value="weekly">This Week</option>
+              <option value="monthly">This Month</option>
+              <option value="quarterly">This Quarter</option>
+              <option value="semiAnnual">Semi-Annual</option>
+              <option value="annual">This Year</option>
+            </select>
+          </div>
+
+          {netIncomeByPeriod[selectedNetIncomePeriod] && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="border border-slate-200 rounded-lg p-4 bg-blue-50">
+                  <div className="text-xs font-semibold text-slate-600 uppercase mb-2">Gross Income</div>
+                  <div className="text-2xl font-bold text-blue-600">₱{netIncomeByPeriod[selectedNetIncomePeriod].grossIncome.toFixed(2)}</div>
+                </div>
+                <div className="border border-slate-200 rounded-lg p-4 bg-orange-50">
+                  <div className="text-xs font-semibold text-slate-600 uppercase mb-2">Discounts</div>
+                  <div className="text-2xl font-bold text-orange-600">-₱{netIncomeByPeriod[selectedNetIncomePeriod].discounts.toFixed(2)}</div>
+                </div>
+                <div className="border border-slate-200 rounded-lg p-4 bg-red-50">
+                  <div className="text-xs font-semibold text-slate-600 uppercase mb-2">Operating Expenses</div>
+                  <div className="text-2xl font-bold text-red-600">-₱{netIncomeByPeriod[selectedNetIncomePeriod].expenses.toFixed(2)}</div>
+                </div>
+                <div className="border border-slate-200 rounded-lg p-4 bg-green-50">
+                  <div className="text-xs font-semibold text-slate-600 uppercase mb-2">Net Income</div>
+                  <div className="text-2xl font-bold text-green-600">₱{netIncomeByPeriod[selectedNetIncomePeriod].netIncome.toFixed(2)}</div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-slate-900">
-                {modal.type === "success" ? "Success" : "Error"}
-              </h3>
-            </div>
-            
-            <p className="text-slate-600 mb-6">{modal.message}</p>
-            
-            <div className="flex justify-end">
-              <button
-                onClick={closeModal}
-                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-                  modal.type === "success"
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-red-600 hover:bg-red-700 text-white"
-                }`}
-              >
-                OK
-              </button>
+
+              {stats.topProducts.length > 0 && (
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <h4 className="text-base font-bold text-slate-900 mb-4">Top Ordered Products</h4>
+                  <div style={{ height: '300px' }}>
+                    <Bar
+                      data={{
+                        labels: stats.topProducts.map(p => `${p.product} - ${p.variant}`),
+                        datasets: [
+                          {
+                            label: 'Quantity Ordered',
+                            data: stats.topProducts.map(p => p.quantity),
+                            backgroundColor: '#073dbe',
+                            borderColor: '#052d99',
+                            borderWidth: 1,
+                            borderRadius: 4
+                          }
+                        ]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                          legend: {
+                            display: true,
+                            position: 'top'
+                          },
+                          title: {
+                            display: false
+                          }
+                        },
+                        scales: {
+                          x: {
+                            beginAtZero: true,
+                            ticks: {
+                              stepSize: 1
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Modal */}
+        {modal.show && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  modal.type === "success" ? "bg-green-100" : "bg-red-100"
+                }`}>
+                  {modal.type === "success" ? (
+                    <FiCheckCircle size={24} className="text-green-600" />
+                  ) : (
+                    <FiAlertCircle size={24} className="text-red-600" />
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  {modal.type === "success" ? "Success" : "Error"}
+                </h3>
+              </div>
+              
+              <p className="text-slate-600 mb-6">{modal.message}</p>
+              
+              <div className="flex justify-end">
+                <button
+                  onClick={closeModal}
+                  className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                    modal.type === "success"
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "bg-red-600 hover:bg-red-700 text-white"
+                  }`}
+                >
+                  OK
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -100,6 +100,25 @@ export default function ProductDashboard() {
     );
   };
 
+  const handleDeleteCategory = async (categoryId, categoryName) => {
+    showModal(
+      "confirm",
+      "Delete Category",
+      `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`,
+      async () => {
+        try {
+          await api.delete(`/category/${categoryId}`);
+          showModal("success", "Success", "Category deleted successfully!");
+          await loadCategories();
+        } catch (err) {
+          showModal("error", "Error", "Failed to delete category. Please try again.");
+        }
+      },
+      "Delete",
+      true
+    );
+  };
+
   const filteredProducts = products
     .filter((p) => p.product_name.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -268,25 +287,42 @@ export default function ProductDashboard() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id.toString())}
-                  className={`px-4 py-2 rounded-lg border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 text-sm font-medium ${
+                  className={`px-4 py-2 rounded-lg border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 text-sm font-medium cursor-pointer ${
                     selectedCategory === category.id.toString()
                       ? `${getCategoryColor(category.id)} border-transparent text-white`
                       : "bg-white border-slate-200 hover:border-[#073dbe] text-slate-700"
                   }`}
                 >
-                  <span>{category.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    selectedCategory === category.id.toString() 
-                      ? "bg-white/20" 
-                      : "bg-slate-100 text-slate-600"
-                  }`}>
-                    {count}
-                  </span>
-                  {lowquantity > 0 && (
-                    <FiAlertCircle className={`${
-                      selectedCategory === category.id.toString() ? "text-white" : "text-red-600"
-                    }`} size={14} />
-                  )}
+                  <button
+                    onClick={() => setSelectedCategory(category.id.toString())}
+                    className="flex items-center gap-2 flex-1 bg-transparent border-none cursor-pointer p-0"
+                  >
+                    <span>{category.name}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      selectedCategory === category.id.toString() 
+                        ? "bg-white/20" 
+                        : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {count}
+                    </span>
+                    {lowquantity > 0 && (
+                      <FiAlertCircle className={`${
+                        selectedCategory === category.id.toString() ? "text-white" : "text-red-600"
+                      }`} size={14} />
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCategory(category.id, category.name);
+                    }}
+                    className="p-1 hover:bg-red-200 rounded transition-all ml-1"
+                    title="Delete category"
+                    type="button"
+                  >
+                    <FiTrash2 size={14} />
+                  </button>
                 </button>
               );
             })}
