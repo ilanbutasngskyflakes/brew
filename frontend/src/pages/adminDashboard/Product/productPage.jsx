@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../../api/api";
 import Modal from "../../../components/modals";
+import { ShopContext } from "../../../context/createShopContext";
 import { 
   FiPackage, 
   FiEdit, 
@@ -20,6 +21,10 @@ export default function ProductDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { shop } = useContext(ShopContext);
+  const brandColor = shop?.brand_color || "#073dbe";
+  const isGoodCoffee = shop?.id === 2;
+  const buttonTextColor = isGoodCoffee ? "#FFD700" : "white";
 
   // Modal state
   const [modal, setModal] = useState({
@@ -79,6 +84,7 @@ export default function ProductDashboard() {
     }, 30000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = async (id, productName) => {
@@ -262,7 +268,7 @@ export default function ProductDashboard() {
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={`px-4 py-2 rounded-lg border transition-all whitespace-nowrap flex items-center gap-2 flex-shrink-0 text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 text-sm font-medium ${
                 selectedCategory === "all"
                   ? "bg-[#073dbe] border-[#073dbe] text-white"
                   : "bg-white border-slate-200 hover:border-[#073dbe] text-slate-700"
@@ -284,20 +290,16 @@ export default function ProductDashboard() {
               ).length;
               
               return (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id.toString())}
-                  className={`px-4 py-2 rounded-lg border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 text-sm font-medium cursor-pointer ${
+                <div key={category.id} className="flex items-center">
+                  <button
+                    onClick={() => setSelectedCategory(category.id.toString())}
+                    className={`px-4 py-2 rounded-lg border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 text-sm font-medium cursor-pointer flex-1 ${
                     selectedCategory === category.id.toString()
                       ? `${getCategoryColor(category.id)} border-transparent text-white`
                       : "bg-white border-slate-200 hover:border-[#073dbe] text-slate-700"
                   }`}
                 >
-                  <button
-                    onClick={() => setSelectedCategory(category.id.toString())}
-                    className="flex items-center gap-2 flex-1 bg-transparent border-none cursor-pointer p-0"
-                  >
-                    <span>{category.name}</span>
+                  <span>{category.name}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       selectedCategory === category.id.toString() 
                         ? "bg-white/20" 
@@ -310,20 +312,19 @@ export default function ProductDashboard() {
                         selectedCategory === category.id.toString() ? "text-white" : "text-red-600"
                       }`} size={14} />
                     )}
-                  </button>
-                  
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCategory(category.id, category.name);
-                    }}
-                    className="p-1 hover:bg-red-200 rounded transition-all ml-1"
-                    title="Delete category"
-                    type="button"
-                  >
-                    <FiTrash2 size={14} />
-                  </button>
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteCategory(category.id, category.name);
+                  }}
+                  className="p-1 hover:bg-red-200 rounded transition-all ml-1"
+                  title="Delete category"
+                  type="button"
+                >
+                  <FiTrash2 size={14} />
+                </button>
+                </div>
               );
             })}
           </div>

@@ -1,8 +1,11 @@
 const db = require("../config/db");
 
 exports.getIngredients = async (req, res) => {
+  const conn = await db.getConnection();
+  const { shopId } = req;
+  
   try {
-    const [rows] = await db.execute(`
+    const [rows] = await conn.execute(`
       SELECT 
         i.id,
         i.ingredient_name,
@@ -11,18 +14,22 @@ exports.getIngredients = async (req, res) => {
         inv.quantity
       FROM tbl_ingredients i
       LEFT JOIN tbl_inventory inv ON inv.ingredient_id = i.id
-      WHERE i.is_deleted = 0
+      WHERE i.is_deleted = 0 AND i.shop_id = ?
       ORDER BY i.id DESC
-    `);
+    `, [shopId]);
 
     res.json(rows);
   } catch (error) {
     console.error("Cannot get ingredients:", error);
     res.status(500).json({ message: "Cannot get ingredients", error: error.message });
+  } finally {
+    conn.release();
   }
 };
 
 exports.getIngredient = async (req, res) => {
+  const { shopId } = req;
+  
   try {
     const id = req.params.id;
 
@@ -35,8 +42,8 @@ exports.getIngredient = async (req, res) => {
          inv.quantity
        FROM tbl_ingredients i
        LEFT JOIN tbl_inventory inv ON inv.ingredient_id = i.id
-       WHERE i.id = ? AND i.is_deleted = 0`,
-      [id]
+       WHERE i.id = ? AND i.is_deleted = 0 AND i.shop_id = ?`,
+      [id, shopId]
     );
 
     if (!rows.length) return res.status(404).json({ message: "Ingredient not found" });
@@ -51,6 +58,8 @@ exports.getIngredient = async (req, res) => {
 exports.addIngredient = async (req, res) => {
   try {
     const { ingredient_name, unit, quantity, unit_price } = req.body;
+    const { shopId } = req;
+    
     if (!ingredient_name || !unit) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -70,15 +79,15 @@ exports.addIngredient = async (req, res) => {
     let ingredientResult;
     if (price !== null) {
       [ingredientResult] = await db.execute(
-        `INSERT INTO tbl_ingredients (ingredient_name, unit, unit_price, is_deleted)
-         VALUES (?, ?, ?, 0)`,
-        [ingredient_name, unit, price]
+        `INSERT INTO tbl_ingredients (ingredient_name, unit, unit_price, shop_id, is_deleted)
+         VALUES (?, ?, ?, ?, 0)`,
+        [ingredient_name, unit, price, shopId]
       );
     } else {
       [ingredientResult] = await db.execute(
-        `INSERT INTO tbl_ingredients (ingredient_name, unit, is_deleted)
-         VALUES (?, ?, 0)`,
-        [ingredient_name, unit]
+        `INSERT INTO tbl_ingredients (ingredient_name, unit, shop_id, is_deleted)
+         VALUES (?, ?, ?, 0)`,
+        [ingredient_name, unit, shopId]
       );
     }
 

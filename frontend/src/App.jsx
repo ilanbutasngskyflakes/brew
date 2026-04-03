@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SignUp from './pages/authPage/signup';
 import Login from './pages/authPage/LogIn';
+import ShopSelectionPage from './pages/ShopSelectionPage';
+import PublicOrderPage from './pages/publicOrder/PublicOrderPage';
+import { ShopProvider } from './context/ShopContext';
 import Dashboard from "./pages/adminDashboard/Dashboard";
 import Cashier from "./pages/cashierDashboard/cashierPage";
 import ProductsPage from "./pages/adminDashboard/Product/productPage"; 
@@ -18,15 +21,21 @@ import Report from "./pages/adminDashboard/Report/salesReport";
 import CashFlowReport from "./pages/adminDashboard/Report/cashFlowReport";
 import AddCashFlowTransaction from "./pages/adminDashboard/Report/addCashFlowTransaction";
 import AddOnEditPage from "./pages/adminDashboard/Ingredients/addOnEditPage";
+import QRCodePage from "./pages/adminDashboard/QRCodePage";
+import KitchenDisplaySystem from "./pages/kitchenDisplay/KitchenDisplaySystem";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/login" element={<Login />} />
+    <ShopProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<ShopSelectionPage />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
+          
+          {/* Public Mobile Ordering */}
+          <Route path="/order/:shopId" element={<PublicOrderPage />} />
 
         {/* Admin Dashboard */}
         <Route path="/dashboard" element={<Dashboard />}>
@@ -45,20 +54,23 @@ function App() {
           <Route path="ingredients/new" element={<CreateIngredientsDashboard/>}/>
           <Route path="ingredients/:id/edit" element={<UpdateIngredientsDashboard/>}/>
           <Route path="/dashboard/addons/:id/edit" element={<AddOnEditPage />} />
+          <Route path="qr-codes" element={<QRCodePage />} />
         {/* <Route path="cashier" element={<Cashier />} />
          <Route path="cashier/order/" element={<OrderHistory />} />
         <Route path="cashier/order/update" element={<OrderHistory />} /> */}
         </Route>
 
         <Route path="cashier" element={<Cashier />} />
-         <Route path="cashier/order/" element={<OrderHistory />} />
+        <Route path="cashier/order/" element={<OrderHistory />} />
         <Route path="cashier/order/update" element={<OrderHistory />} />
+        <Route path="kitchen" element={<KitchenDisplaySystem />} />
 
         {/* Cashier */}
         
 
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ShopProvider>
   );
 }
 

@@ -39,19 +39,19 @@ export const getUser = async (req, res) => {
 // sign in / add user
 export const addUser = async (req, res) => {
   try {
-    const { name, first_name, last_name, password, role } = req.body;
+    const { name, first_name, last_name, password, role, shop_id } = req.body;
 
-    if (!name || !first_name || !last_name || !password || !role) {
+    if (!name || !first_name || !last_name || !password || !role || !shop_id) {
       return res.status(400).json({
-        message: "name, First and Last name, Password, Role are required",
+        message: "name, First and Last name, Password, Role, and Shop ID are required",
       });
     }
 
     const hashed = await bcrypt.hash(password, 10);
 
     const [result] = await db.execute(
-      "INSERT INTO tbl_users (name, first_name, last_name, password, role) VALUES (?, ?, ?, ?, ?)",
-      [name, first_name, last_name, hashed, role]
+      "INSERT INTO tbl_users (name, first_name, last_name, password, role, shop_id) VALUES (?, ?, ?, ?, ?, ?)",
+      [name, first_name, last_name, hashed, role, shop_id]
     );
 
     res.status(201).json({
@@ -60,6 +60,7 @@ export const addUser = async (req, res) => {
       first_name,
       last_name,
       role,
+      shop_id,
       message: "User added",
     });
   } catch (error) {
@@ -77,7 +78,7 @@ export const verifyUser = async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      "SELECT id, name, first_name, last_name, password, role FROM tbl_users WHERE name = ? LIMIT 1",
+      "SELECT id, name, first_name, last_name, password, role, shop_id FROM tbl_users WHERE name = ? LIMIT 1",
       [name]
     );
 

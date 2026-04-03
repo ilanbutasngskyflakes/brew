@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import EquipmentForm from "./equipForm"; // Create a form similar to ProductForm but for equipment
 import api from "../../../api/api";
 import { useNavigate } from "react-router-dom";
+import { ShopContext } from "../../../context/createShopContext";
 
 export default function EquipmentDashboard() {
   const [equipments, setEquipments] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editEquipment, setEditEquipment] = useState(null);
   const navigate = useNavigate();
+  const { shop } = useContext(ShopContext);
+  const brandColor = shop?.brand_color || "#073dbe";
+  const isGoodCoffee = shop?.id === 2;
+  const buttonTextColor = isGoodCoffee ? "#FFD700" : "white";
 
   // Load equipments
   const loadEquipments = async () => {

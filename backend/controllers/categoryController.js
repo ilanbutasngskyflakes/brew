@@ -2,8 +2,10 @@ import db from "../config/db.js";
 
 export const getCategories = async (req, res) => {
   try {
+    const { shopId } = req;
     const [rows] = await db.execute(
-      "SELECT id, name FROM tbl_category WHERE deleted_at IS NULL"
+      "SELECT id, name FROM tbl_category WHERE deleted_at IS NULL AND shop_id = ?",
+      [shopId]
     );
 
     res.json(rows);
@@ -16,6 +18,7 @@ export const getCategories = async (req, res) => {
 export const addCategory = async (req, res) => {
   try {
     const { name, shortcut } = req.body;
+    const { shopId } = req;
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return res
@@ -24,8 +27,8 @@ export const addCategory = async (req, res) => {
     }
 
     const [result] = await db.execute(
-      "INSERT INTO tbl_category (name) VALUES (?)",
-      [name.trim()]
+      "INSERT INTO tbl_category (name, shop_id) VALUES (?, ?)",
+      [name.trim(), shopId]
     );
 
     res.status(201).json({ id: result.insertId, message: "Category added" });
@@ -38,14 +41,15 @@ export const addCategory = async (req, res) => {
 export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
+    const { shopId } = req;
 
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid category ID" });
     }
 
     const [result] = await db.execute(
-      "UPDATE tbl_category SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL",
-      [id]
+      "UPDATE tbl_category SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL AND shop_id = ?",
+      [id, shopId]
     );
 
     if (result.affectedRows === 0) {

@@ -1,12 +1,14 @@
 /* eslint-disable react-hooks/immutability */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiShoppingCart, FiPackage, FiActivity, FiAlertCircle, FiTrendingUp, FiArrowRight, FiUsers } from "react-icons/fi";
+import { FiShoppingCart, FiPackage, FiActivity, FiAlertCircle, FiTrendingUp, FiArrowRight, FiUsers, FiBox } from "react-icons/fi";
 import Modal from "../../components/modals";
 import api from "../../api/api";
+import { ShopContext } from "../../context/createShopContext";
 
 export default function Home() {
   const navigate = useNavigate();
+  useContext(ShopContext);
   const [stats, setStats] = useState({
     totalOrders: 0,
     todayOrders: 0,
@@ -263,10 +265,10 @@ export default function Home() {
           {/* Today's Orders */}
           <div className="bg-white rounded-lg border border-slate-200 p-4 hover:border-[#073dbe] transition-all">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-blue-50 p-2.5 rounded-lg">
-                <FiShoppingCart className="text-[#073dbe]" size={20} />
+              <div className="bg-slate-200 p-2.5 rounded-lg">
+                <FiShoppingCart className="text-slate-700" size={20} />
               </div>
-              <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
                 Today
               </span>
             </div>
@@ -278,10 +280,10 @@ export default function Home() {
           {/* Today's Revenue */}
           <div className="bg-white rounded-lg border border-slate-200 p-4 hover:border-[#073dbe] transition-all">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-green-50 p-2.5 rounded-lg">
-                <span className="text-green-600 font-bold text-xl">₱</span>
+              <div className="bg-slate-200 p-2.5 rounded-lg">
+                <span className="text-slate-700 font-bold text-xl">₱</span>
               </div>
-              <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
                 Today
               </span>
             </div>
@@ -293,8 +295,8 @@ export default function Home() {
           {/* Products */}
           <div className="bg-white rounded-lg border border-slate-200 p-4 hover:border-[#073dbe] transition-all">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-purple-50 p-2.5 rounded-lg">
-                <FiPackage className="text-purple-600" size={20} />
+              <div className="bg-slate-200 p-2.5 rounded-lg">
+                <FiPackage className="text-slate-700" size={20} />
               </div>
               {stats.lowStockProducts > 0 && (
                 <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
@@ -317,8 +319,8 @@ export default function Home() {
           {/* Ingredients */}
           <div className="bg-white rounded-lg border border-slate-200 p-4 hover:border-[#073dbe] transition-all">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-orange-50 p-2.5 rounded-lg">
-                <FiActivity className="text-orange-600" size={20} />
+              <div className="bg-slate-200 p-2.5 rounded-lg">
+                <FiActivity className="text-slate-700" size={20} />
               </div>
               {stats.lowStockIngredients > 0 && (
                 <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
@@ -345,7 +347,7 @@ export default function Home() {
             <FiTrendingUp className="text-[#073dbe]" size={18} />
             Quick Actions
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <button
               onClick={() => navigate("/dashboard/product")}
               className="text-left p-3 bg-slate-50 hover:bg-blue-50 hover:border-[#073dbe] rounded-lg transition-all border border-slate-200 group"
@@ -417,6 +419,24 @@ export default function Home() {
                 <FiArrowRight className="text-slate-400 group-hover:text-[#073dbe] transition-colors" size={16} />
               </div>
             </button>
+
+            <button
+              onClick={() => navigate("/kitchen")}
+              className="text-left p-3 bg-slate-50 hover:bg-blue-50 hover:border-[#073dbe] rounded-lg transition-all border border-slate-200 group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-600 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                    <FiBox className="text-white" size={16} />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm">Kitchen Display</div>
+                    <div className="text-xs text-slate-600">View pending orders</div>
+                  </div>
+                </div>
+                <FiArrowRight className="text-slate-400 group-hover:text-[#073dbe] transition-colors" size={16} />
+              </div>
+            </button>
           </div>
         </div>
 
@@ -425,7 +445,7 @@ export default function Home() {
           <div className="mt-4 space-y-3">
             {/* Products Low Stock Alert */}
             {stats.lowStockProducts > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="bg-slate-100 border border-slate-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <FiAlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
                   <div className="flex-1">
@@ -456,7 +476,7 @@ export default function Home() {
                     </div>
                     <button
                       onClick={() => navigate("/dashboard/product")}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
+                      className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
                     >
                       <FiPackage size={14} />
                       Restock Products

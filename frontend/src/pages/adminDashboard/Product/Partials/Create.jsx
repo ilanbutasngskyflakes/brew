@@ -123,6 +123,7 @@ export default function Create({ formData = {}, isEditing }) {
       }
     };
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update form data if editing
@@ -821,7 +822,7 @@ export default function Create({ formData = {}, isEditing }) {
         </form>
       </div>
 
-      <style jsx>{`
+      <style>{`
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
           -webkit-appearance: none;

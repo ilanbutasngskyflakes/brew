@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/immutability */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import api from "../../../api/api";
+import { ShopContext } from "../../../context/createShopContext";
 import { FiEdit, FiTrash2, FiLock, FiUser, FiUserPlus, FiX, FiCheck } from "react-icons/fi";
 
 export default function UserManagement() {
@@ -11,6 +12,10 @@ export default function UserManagement() {
   const [passwordChange, setPasswordChange] = useState({ id: null, current_password: "", new_password: "" });
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const { shop } = useContext(ShopContext);
+  const brandColor = shop?.brand_color || "#073dbe";
+  const isGoodCoffee = shop?.id === 2;
+  const buttonTextColor = isGoodCoffee ? "#FFD700" : "white";
 
   useEffect(() => {
     fetchUsers();

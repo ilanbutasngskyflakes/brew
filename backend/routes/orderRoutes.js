@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const { createOrder, getOrders, updateOrder, updateOrderStatus } = require("../controllers/orderController");
+const shopFilter = require("../middleware/shopFilter");
 
-// POST /order - create new order
+// All order routes require shopId
+router.use(shopFilter);
 router.post("/", createOrder);
 
 // GET /order - get all orders

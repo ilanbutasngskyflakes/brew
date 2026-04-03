@@ -4,13 +4,16 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/immutability */
 /* eslint-disable react-hooks/purity */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/modals";
+import { ShopContext } from "../../context/createShopContext";
 import { FiShoppingCart, FiSearch, FiX, FiTrash2, FiPlus, FiMinus, FiArrowLeft, FiPackage, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 
 export default function CashierPage() {
+  const { shop } = useContext(ShopContext);
+  
   // ✅ Revert to manual state
   const [modal, setModal] = useState({
     isOpen: false,
@@ -52,6 +55,7 @@ export default function CashierPage() {
   const [orderType, setOrderType] = useState("dine-in");
   const [expandedItem, setExpandedItem] = useState(null);
   const [customerName, setCustomerName] = useState("");
+  const [notes, setNotes] = useState("");
   const [addOns, setAddOns] = useState([]);
   const [selectedAddOns, setSelectedAddOns] = useState({});
   const navigate = useNavigate();
@@ -385,10 +389,12 @@ export default function CashierPage() {
       const orderPayload = {
         cashier_id: user?.id,
         order_type: orderType,
-        status: "completed",
+        status: "pending",  // ✅ Send to kitchen first as pending
         total: finalTotal,                    // ✅ Use calculated total
         discount_type: "per-item",            // ✅ Indicate per-item discounting
         discount: totalDiscount,              // ✅ Total discount amount
+        customer_name: customerName,          // ✅ Already validated, send as-is
+        notes: notes || null,                 // ✅ Add special requests/notes
         items: cart.map(item => ({
           variant_id: item.variant_id,
           quantity: item.quantity,
@@ -433,8 +439,8 @@ export default function CashierPage() {
 
       showModal(
         "success",
-        "Order Completed",
-        `Order #${response.data.order_id} created successfully!`,
+        "Order Sent to Kitchen",
+        `Order #${response.data.order_id} sent to kitchen! Waiting for preparation...`,
         () => {
           // ✅ Print receipt with customer name
           printReceipt(response.data.order_id, {
@@ -448,6 +454,7 @@ export default function CashierPage() {
           setCart([]);
           setAmountPaid("");
           setCustomerName("");
+          setNotes("");
           navigate("/cashier/order", { state: { updatedOrder: response.data } });
         }
       );
@@ -503,14 +510,8 @@ export default function CashierPage() {
         </style>
       </head>
       <body>
-        <div class="header">
-          <h2>Barcelo Cafe</h2>
-          <div>La Consolacion College</div>
-          <div>Galo- Gatuslao- Rizal Streets,</div>
-          <div>Bacolod City, Philippines, 6100</div>
-        </div>
         <div class="divider"></div>
-        <div style="text-align: center; font-weight: bold; margin: 10px 0;">OFFICIAL RECEIPT</div>
+        <div style="text-align: center; font-weight: bold; margin: 10px 0;">${shop?.receipt_header || 'OFFICIAL RECEIPT'}</div>
         <div class="order-type">${orderData.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
         
         <div class="divider"></div>
@@ -554,8 +555,8 @@ export default function CashierPage() {
         <div class="total-row"><span>CHANGE:</span><span>₱${Math.max(0, safeChange).toFixed(2)}</span></div>
         <div class="divider"></div>
         <div class="footer">
-          <div style="margin: 10px 0;">Reference No: BARCELO${String(orderId).padStart(6, '0')}</div>
-          <div style="margin: 10px 0; font-weight: bold;">Thank you for your order!</div>
+          <div style="margin: 6px 0;">Reference No: ${shop?.name?.split(' ').map(w => w[0]).join('').toUpperCase() || 'SHOP'}${String(orderId).padStart(6, '0')}</div>
+          <div style="margin: 10px 0; font-weight: bold;">${shop?.receipt_footer || 'Thank you for your order!'}</div>
           <div>Please come again!</div>
         </div>
       </body>
@@ -629,8 +630,8 @@ export default function CashierPage() {
 
       {/* Sidebar - Categories */}
       <div className="w-full lg:w-60 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col overflow-hidden">
-        <div className="p-4 bg-[#073dbe]">
-          <h2 className="text-lg font-bold text-white mb-1">Categories</h2>
+        <div className="p-4 text-white" style={{ backgroundColor: shop?.brand_color || '#073dbe' }}>
+          <h2 className="text-lg font-bold mb-1">Categories</h2>
           <p className="text-blue-100 text-xs">Browse menu</p>
           {editingOrderId && (
             <div className="mt-2 bg-amber-500 text-white px-2 py-1.5 rounded-lg text-xs font-bold">
@@ -700,12 +701,13 @@ export default function CashierPage() {
           <div className="p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Barcelo Cafe</h1>
+                <h1 className="text-2xl font-bold text-slate-900">{shop?.name}</h1>
                 <p className="text-slate-600 text-sm mt-0.5">Select products to add to cart</p>
               </div>
               <button
                 onClick={() => handleNavigateWithConfirm("/cashier/order")}
-                className="w-full sm:w-auto bg-[#073dbe] hover:bg-[#052d99] text-white px-4 py-2 rounded-lg transition-all font-medium text-sm"
+                className="w-full sm:w-auto text-white px-4 py-2 rounded-lg transition-all font-medium text-sm"
+                style={{ backgroundColor: shop?.brand_color || '#073dbe' }}
               >
                 Order History
               </button>
@@ -1090,7 +1092,8 @@ export default function CashierPage() {
 
                   addToCart(selectedProduct, selectedProduct.selectedVariant, addOnItems);
                 }}
-                className="flex-1 px-4 py-2.5 bg-[#073dbe] text-white rounded-lg hover:bg-[#052d99] transition-colors font-medium"
+                className="flex-1 px-4 py-2.5 text-white rounded-lg transition-colors font-medium"
+                style={{ backgroundColor: shop?.brand_color || '#073dbe' }}
               >
                 Add to Cart
               </button>
@@ -1101,10 +1104,10 @@ export default function CashierPage() {
 
       {/* Cart Sidebar */}
       <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col overflow-hidden">
-        <div className="p-4 bg-[#073dbe]">
+        <div className="p-4 text-white" style={{ backgroundColor: shop?.brand_color || '#073dbe' }}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2">
                 <FiShoppingCart size={18} />
                 Cart
               </h2>
@@ -1127,6 +1130,18 @@ export default function CashierPage() {
               placeholder="Enter customer name..."
               className="w-full px-3 py-2 rounded-lg border border-blue-300 bg-white/10 text-white placeholder-blue-200 focus:outline-none focus:border-white focus:ring-2 focus:ring-blue-200 text-sm"
               required
+            />
+          </div>
+          
+          {/* Special Requests / Notes Input */}
+          <div className="mt-3">
+            <label className="block text-xs font-bold text-blue-100 mb-1.5">Special Requests (Optional)</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., No sugar, extra syrup, etc."
+              className="w-full px-3 py-2 rounded-lg border border-blue-300 bg-white/10 text-white placeholder-blue-200 focus:outline-none focus:border-white focus:ring-2 focus:ring-blue-200 text-sm resize-none"
+              rows="2"
             />
           </div>
         </div>

@@ -4,6 +4,7 @@ const productController = require("../controllers/productController");
 const variantController = require("../controllers/variantController");
 const multer = require("multer");
 const path = require("path");
+const shopFilter = require("../middleware/shopFilter");
 
 // -------------------- MULTER CONFIG --------------------
 const storage = multer.diskStorage({
@@ -21,6 +22,9 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({ storage, fileFilter });
+
+// All product routes require shopId
+router.use(shopFilter);
 
 // -------------------- PRODUCT ROUTES --------------------
 

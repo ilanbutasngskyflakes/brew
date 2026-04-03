@@ -2,6 +2,10 @@
 const express = require("express");
 const router = express.Router();
 const addOnsController = require("../controllers/addonsController");
+const shopFilter = require("../middleware/shopFilter");
+
+// All add-on routes require shopId
+router.use(shopFilter);
 
 // GET all add-ons
 router.get("/", addOnsController.getAddOns);

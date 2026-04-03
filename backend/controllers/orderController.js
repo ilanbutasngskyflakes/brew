@@ -28,7 +28,8 @@ const checkVariantStock = async (variantId, quantity, conn) => {
 
 // CREATE ORDER with ingredient & add-on deduction
 const createOrder = async (req, res) => {
-  const { cashier_id, order_type, status, total, items, discount_type, discount, paid, change } = req.body;
+  const { cashier_id, order_type, status, total, items, discount_type, discount, paid, change, customer_name, notes } = req.body;
+  const { shopId } = req;
 
   console.log("📥 INCOMING ORDER DATA:", {
     cashier_id,
@@ -64,8 +65,11 @@ const createOrder = async (req, res) => {
         discount_type, 
         discount, 
         paid, 
-        \`change\`
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        \`change\`,
+        shop_id,
+        customer_name,
+        notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         cashier_id,
         order_type || "dine-in",
@@ -74,7 +78,10 @@ const createOrder = async (req, res) => {
         discount_type || null,
         discount ? Number(discount) : 0,
         paid ? Number(paid) : Number(total),
-        change ? Number(change) : 0
+        change ? Number(change) : 0,
+        shopId,
+        customer_name?.trim() ? customer_name : "Walk-in",  // ✅ Use customer name or default
+        notes || null
       ]
     );
 
@@ -190,6 +197,8 @@ const createOrder = async (req, res) => {
 // ✅ UPDATE getOrders to retrieve per-item discounts
 const getOrders = async (req, res) => {
   try {
+    const { shopId } = req;
+    
     const [orders] = await db.execute(
       `SELECT 
          id, 
@@ -201,9 +210,13 @@ const getOrders = async (req, res) => {
          discount,
          paid, 
          \`change\`, 
-         created_at
+         created_at,
+         customer_name,
+         notes
        FROM tbl_orders 
-       ORDER BY created_at DESC`
+       WHERE shop_id = ?
+       ORDER BY created_at DESC`,
+      [shopId]
     );
 
     const ordersWithItems = await Promise.all(

@@ -1,12 +1,14 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, Box, Archive, FileText, Settings, LogOut, ChevronRight, AlertCircle, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, Home, Box, Archive, FileText, Settings, LogOut, ChevronRight, AlertCircle, DollarSign, QrCode, Utensils } from "lucide-react";
+import { useState, useContext } from "react";
+import { ShopContext } from "../../context/createShopContext";
 
 export default function Sidebar({ isOpen, setIsOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user"));
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const { shop } = useContext(ShopContext);
 
   if (!user || user.role !== "admin") {
     navigate("/login");
@@ -19,13 +21,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { name: "Ingredients", path: "/dashboard/ingredients", icon: <Archive size={20} /> },
     { name: "Reports", path: "/dashboard/reports", icon: <FileText size={20} /> },
     { name: "Transactions", path: "/dashboard/cashflow", icon: <DollarSign size={20} /> },
-    { name: "Settings", path: "/dashboard/settings", icon: <Settings size={20} /> },
+    { name: "QR Codes", path: "/dashboard/qr-codes", icon: <QrCode size={20} /> },
+    { name: "Kitchen Display", path: "/kitchen", icon: <Utensils size={20} /> },
+    { name: "User Management", path: "/dashboard/settings", icon: <Settings size={20} /> },
   ];
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    navigate("/login");
+    localStorage.removeItem("selectedShop");
+    navigate("/");
   };
 
   return (
@@ -53,17 +58,13 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           aria-label="Toggle sidebar"
         >
           {isOpen ? (
-            <img 
-              src="/logo.png" 
-              alt="Barcelo Cafe Logo" 
-              className="h-12 w-auto object-contain"
-            />
+            <div className="text-2xl font-bold" style={{ color: shop?.brand_color || '#073dbe' }}>
+              {shop?.name}
+            </div>
           ) : (
-            <img 
-              src="/logo.png" 
-              alt="Barcelo Cafe Logo" 
-              className="h-10 w-10 object-contain rounded-full"
-            />
+            <div className="text-lg font-bold text-center" style={{ color: shop?.brand_color || '#073dbe' }}>
+              {shop?.name?.split(' ').map(w => w[0]).join('')}
+            </div>
           )}
         </button>
 
@@ -71,8 +72,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         {isOpen && (
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span className="text-[#073dbe] font-bold text-sm">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: shop?.brand_color + '20' || '#073dbe20' }}>
+                <span className="font-bold text-sm" style={{ color: shop?.brand_color || '#073dbe' }}>
                   {user.first_name?.[0]}{user.last_name?.[0]}
                 </span>
               </div>
@@ -102,13 +103,14 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                 className={`flex items-center gap-3 py-2.5 px-3 rounded-lg transition-all group relative
                 ${
                   isActive
-                    ? "bg-[#073dbe] text-white"
+                    ? "text-white"
                     : "text-slate-700 hover:bg-slate-100"
                 }
                 ${!isOpen ? "justify-center lg:px-3" : ""}`}
+                style={isActive ? { backgroundColor: shop?.brand_color || '#073dbe' } : {}}
                 title={!isOpen ? item.name : ""}
               >
-                <span className={`${isActive ? "text-white" : "text-slate-600 group-hover:text-[#073dbe]"} ${!isOpen ? "" : "flex-shrink-0"}`}>
+                <span className={`${isActive ? "text-white" : "text-slate-600"} ${!isOpen ? "" : "flex-shrink-0"}`}>
                   {item.icon}
                 </span>
                 {isOpen && (
@@ -154,7 +156,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           {/* Copyright */}
           {isOpen && (
             <div className="px-4 pb-3 text-center">
-              <p className="text-xs text-slate-500">© 2025 Barcelo Cafe</p>
+              <p className="text-xs text-slate-500">© 2025 {shop?.name}</p>
             </div>
           )}
         </div>

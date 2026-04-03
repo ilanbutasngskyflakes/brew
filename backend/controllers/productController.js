@@ -3,12 +3,14 @@ const db = require("../config/db.js");
 // -------------------- GET SINGLE PRODUCT --------------------
 exports.getProductById = async (req, res) => {
   const conn = await db.getConnection();
+  const { shopId } = req;
+  
   try {
     const id = req.params.id;
 
     const [products] = await conn.execute(
-      "SELECT * FROM tbl_products WHERE id = ? AND is_deleted = 0",
-      [id]
+      "SELECT * FROM tbl_products WHERE id = ? AND is_deleted = 0 AND shop_id = ?",
+      [id, shopId]
     );
 
     if (products.length === 0) {
@@ -96,9 +98,10 @@ exports.getProductById = async (req, res) => {
 exports.getAllProducts = async (req, res) => {
   const conn = await db.getConnection();
   try {
-    // Get all products
+    // Get all products for current shop
     const [products] = await conn.execute(
-      "SELECT * FROM tbl_products WHERE is_deleted = 0 ORDER BY id DESC"
+      "SELECT * FROM tbl_products WHERE is_deleted = 0 AND shop_id = ? ORDER BY id DESC",
+      [shopId]
     );
 
     // Get all variants with ingredients, quantities, and calculated_cost
@@ -117,7 +120,9 @@ exports.getAllProducts = async (req, res) => {
        FROM tbl_product_variants v
        LEFT JOIN tbl_product_ingredients pi ON v.id = pi.variant_id
        LEFT JOIN tbl_ingredients i ON pi.ingredient_id = i.id
-       ORDER BY v.product_id, v.id`
+       WHERE v.product_id IN (SELECT id FROM tbl_products WHERE shop_id = ?)
+       ORDER BY v.product_id, v.id`,
+      [shopId]
     );
 
     // Group variants and ingredients by product
@@ -218,6 +223,7 @@ exports.getProducts = async (req, res) => {
 // -------------------- GET PRODUCTS WITH VARIANTS AND CALCULATED quantity --------------------
 exports.getProductsFull = async (req, res) => {
   const conn = await db.getConnection();
+  const { shopId } = req;
 
   try {
     // Get all products with variants and ingredients
@@ -242,9 +248,9 @@ exports.getProductsFull = async (req, res) => {
       LEFT JOIN tbl_product_ingredients pi ON v.id = pi.variant_id
       LEFT JOIN tbl_ingredients i ON pi.ingredient_id = i.id
       LEFT JOIN tbl_inventory inv ON inv.ingredient_id = i.id
-      WHERE p.is_deleted = 0
+      WHERE p.is_deleted = 0 AND p.shop_id = ?
       ORDER BY p.id, v.id
-    `);
+    `, [shopId]);
 
     // Transform into nested structure with calculated quantity
     const products = [];
@@ -323,9 +329,11 @@ exports.getProductsFull = async (req, res) => {
 exports.getProductWithVariants = async (req, res) => {
   try {
     const id = req.params.id;
+    const { shopId } = req;
+    
     const [products] = await db.execute(
-      "SELECT * FROM tbl_products WHERE id = ?",
-      [id]
+      "SELECT * FROM tbl_products WHERE id = ? AND shop_id = ?",
+      [id, shopId]
     );
     if (!products.length)
       return res.status(404).json({ message: "Product not found" });
@@ -346,6 +354,7 @@ exports.getProductWithVariants = async (req, res) => {
 // -------------------- ADD PRODUCT --------------------
 exports.addProductFull = async (req, res) => {
   const conn = await db.getConnection();
+  const { shopId } = req;
 
   try {
     await conn.beginTransaction();
@@ -368,9 +377,9 @@ exports.addProductFull = async (req, res) => {
 
     // Insert product
     const [productResult] = await conn.execute(
-      `INSERT INTO tbl_products (category_id, product_name, product_description, image)
-       VALUES (?, ?, ?, ?)`,
-      [category_id || null, product_name || null, product_description || null, image || null]
+      `INSERT INTO tbl_products (category_id, product_name, product_description, image, shop_id)
+       VALUES (?, ?, ?, ?, ?)`,
+      [category_id || null, product_name || null, product_description || null, image || null, shopId]
     );
     const product_id = productResult.insertId;
 
@@ -419,6 +428,7 @@ exports.addProductFull = async (req, res) => {
 // -------------------- UPDATE PRODUCT --------------------
 exports.updateProduct = async (req, res) => {
   const conn = await db.getConnection();
+  const { shopId } = req;
 
   try {
     await conn.beginTransaction();
@@ -436,6 +446,7 @@ exports.updateProduct = async (req, res) => {
     }
     
     params.push(id);
+    params.push(shopId);
 
     console.log("📥 Update request for product:", id);
     console.log("📦 Variants received:", variants);
@@ -444,11 +455,11 @@ exports.updateProduct = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // 1. Update product info (preserve image if not uploading new one)
+    // 1. Update product info - include shop_id in WHERE clause
     const [result] = await conn.execute(
       `UPDATE tbl_products 
        SET category_id=?, product_name=?, product_description=?${imageUpdate}
-       WHERE id=?`,
+       WHERE id=? AND shop_id=?`,
       params
     );
 
@@ -627,9 +638,11 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const id = req.params.id;
+    const { shopId } = req;
+    
     const [result] = await db.execute(
-      "UPDATE tbl_products SET is_deleted = 1 WHERE id=?",
-      [id]
+      "UPDATE tbl_products SET is_deleted = 1 WHERE id=? AND shop_id=?",
+      [id, shopId]
     );
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Product not found" });

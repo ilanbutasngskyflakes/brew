@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
+import { ShopContext } from "../../../context/createShopContext";
 import {
   FiArrowLeft,
   FiPlus,
@@ -20,6 +21,7 @@ import {
 import * as XLSX from "xlsx";
 
 export default function CashFlowReport() {
+  const { shop } = useContext(ShopContext);
   const [transactions, setTransactions] = useState([]);
   const [salesData, setSalesData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -139,7 +141,7 @@ export default function CashFlowReport() {
   ============================ */
   const exportToExcel = () => {
     const rows = [
-      ["Barcelo Cafe - Cash Flow Report"],
+      [`${shop?.name || 'Shop'} - Cash Flow Report`],
       ["Date:", selectedDate],
       ["Generated:", new Date().toLocaleString()],
       [],
@@ -280,7 +282,7 @@ export default function CashFlowReport() {
       </head>
       <body>
         <div class="header">
-          <h1>Barcelo Cafe</h1>
+          <h1>${shop?.name || 'Shop'}</h1>
           <div class="date">Cash Flow Report - ${selectedDate}</div>
           <div class="date">Generated: ${new Date().toLocaleString()}</div>
         </div>

@@ -1,9 +1,10 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/immutability */
 /* eslint-disable no-case-declarations */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../api/api";
+import { ShopContext } from "../../../context/createShopContext";
 import { FiDownload, FiPrinter, FiCalendar, FiTrendingUp, FiShoppingCart, FiArrowLeft, FiAlertCircle, FiCheckCircle } from "react-icons/fi";
 import * as XLSX from 'xlsx';
 import { Bar } from 'react-chartjs-2';
@@ -12,6 +13,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function SalesReportPage() {
+  const { shop } = useContext(ShopContext);
   const [orders, setOrders] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [reportType, setReportType] = useState("daily");
@@ -285,7 +287,7 @@ export default function SalesReportPage() {
     try {
       const period = netIncomeByPeriod[selectedNetIncomePeriod];
       const summaryData = [
-        ['Barcelo Cafe - Sales Report'],
+        [`${shop?.name || 'Shop'} - Sales Report`],
         ['Period:', getPeriodLabel()],
         ['Generated:', new Date().toLocaleString()],
         [],
@@ -495,7 +497,7 @@ export default function SalesReportPage() {
       </head>
       <body>
         <div class="header">
-          <h1>Barcelo Cafe</h1>
+          <h1>${shop?.name || 'Shop'}</h1>
           <div class="period">Sales Report - ${getPeriodLabel()}</div>
           <div class="generated">Generated: ${new Date().toLocaleString()}</div>
         </div>
@@ -584,8 +586,7 @@ export default function SalesReportPage() {
         ` : '<p style="text-align: center; color: #64748b; padding: 20px;">No orders for this period.</p>'}
 
         <div class="footer">
-          <div>Barcelo Cafe - La Consolacion College</div>
-          <div>Galo-Gatuslao-Rizal Streets, Bacolod City, Philippines, 6100</div>
+          <div>${shop?.name || 'Shop'}</div>
         </div>
       </body>
       </html>

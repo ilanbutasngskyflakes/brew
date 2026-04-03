@@ -556,7 +556,7 @@ export default function IngredientPage() {
 
                           {/* Price */}
                           <td className="px-4 py-3">
-                            <div className="text-sm font-medium text-orange-600">₱{price.toFixed(2)}</div>
+                            <div className="text-sm font-medium text-orange-600">₱{price.toFixed(1)}</div>
                           </td>
 
                           {/* Servings Left with Progress */}

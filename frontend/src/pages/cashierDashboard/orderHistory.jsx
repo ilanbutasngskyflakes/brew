@@ -1,11 +1,13 @@
 /* eslint-disable no-undef */
 /* eslint-disable react-hooks/immutability */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
+import { ShopContext } from "../../context/createShopContext";
 import { FiClock, FiEdit, FiShoppingCart, FiCalendar, FiArrowLeft, FiPrinter } from "react-icons/fi";
 
 export default function OrderHistoryPage() {
+  const { shop } = useContext(ShopContext);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,15 +102,8 @@ export default function OrderHistoryPage() {
         </style>
       </head>
       <body>
-        <div class="center">
-          <div style="font-weight: bold; margin-bottom: 2px;">Barcelo Cafe</div>
-          <div style="font-size: 10px;">La Consolacion College</div>
-          <div style="font-size: 10px;">Galo- Gatuslao- Rizal Streets,</div>
-          <div style="font-size: 10px;">Bacolod City, Philippines, 6100</div>
-        </div>
-        
         <div class="divider"></div>
-        <div class="center" style="font-weight: bold; margin: 4px 0;">OFFICIAL RECEIPT</div>
+        <div class="center" style="font-weight: bold; margin: 4px 0;">${shop?.receipt_header || 'OFFICIAL RECEIPT'}</div>
         <div class="center" style="font-weight: bold; margin: 4px 0; text-transform: uppercase;">${order.order_type === 'dine-in' ? 'DINE IN' : 'TAKE OUT'}</div>
         <div class="divider"></div>
         
@@ -159,6 +154,12 @@ export default function OrderHistoryPage() {
             itemHTML += `<div style="font-size: 9px; color: #d00; margin-left: 5px; font-weight: bold; margin-bottom: 2px;">${item.discount_type?.toUpperCase() || 'DISCOUNT'} -₱${itemDiscount.toFixed(2)}</div>`;
           }
           
+          if (item.addOns && item.addOns.length > 0) {
+            item.addOns.forEach(addon => {
+              itemHTML += `<div style="font-size: 10px; color: #d97706; margin-left: 5px; margin-bottom: 2px;">+ ${addon.name}</div>`;
+            });
+          }
+          
           return itemHTML;
         }).join('')}
         
@@ -184,12 +185,12 @@ export default function OrderHistoryPage() {
         </div>
         <div class="total-row">
           <span>CHANGE:</span>
-          <span>₱${Math.max(0, safeChange).toFixed(2)}</span>
+          <span>₱${Math.max(0, safeChange).toFixed(2)}</spa${shop?.receipt_footer || 'Thank you for your order!'}
         </div>
         
         <div class="divider"></div>
         <div class="center" style="font-size: 10px; margin: 6px 0;">
-          <div>Reference No: BARCELO${String(order.id).padStart(6, '0')}</div>
+          <div>Reference No: ${shop?.name?.split(' ').map(w => w[0]).join('').toUpperCase() || 'SHOP'}${String(order.id).padStart(6, '0')}</div>
           <div style="font-weight: bold; margin-top: 4px;">Thank you for your order!</div>
           <div>Please come again!</div>
         </div>
@@ -269,8 +270,8 @@ export default function OrderHistoryPage() {
           </button>
           
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <div className="bg-[#073dbe] p-2.5 rounded-lg">
-              <FiClock className="text-white text-xl" />
+            <div className="p-2.5 rounded-lg text-white" style={{ backgroundColor: shop?.brand_color || '#073dbe' }}>
+              <FiClock className="text-xl" />
             </div>
             Order History
           </h1>
@@ -280,11 +281,11 @@ export default function OrderHistoryPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-blue-50 p-2.5 rounded-lg">
-                <FiShoppingCart className="text-[#073dbe]" size={20} />
+              <div className="p-2.5 rounded-lg" style={{ backgroundColor: (shop?.brand_color || '#073dbe') + '15' }}>
+                <FiShoppingCart size={20} style={{ color: shop?.brand_color || '#073dbe' }} />
               </div>
             </div>
             <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Orders</div>
@@ -305,17 +306,7 @@ export default function OrderHistoryPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-purple-50 p-2.5 rounded-lg">
-                <FiShoppingCart className="text-purple-600" size={20} />
-              </div>
-            </div>
-            <div className="text-xs font-semibold text-slate-600 uppercase mb-1">Total Revenue</div>
-            <div className="text-2xl font-bold text-slate-900">
-              ₱{orders.reduce((sum, o) => sum + Number(o.total || 0), 0).toFixed(2)}
-            </div>
-          </div>
+
         </div>
 
         {/* Search and Filter */}
@@ -381,7 +372,7 @@ export default function OrderHistoryPage() {
                   {/* Order Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="bg-[#073dbe] text-white px-3 py-1 rounded-lg font-bold text-sm">
+                      <div className="text-white px-3 py-1 rounded-lg font-bold text-sm" style={{ backgroundColor: shop?.brand_color || '#073dbe' }}>
                         #{order.id}
                       </div>
                       <div className="text-xs text-slate-600">
@@ -488,7 +479,8 @@ export default function OrderHistoryPage() {
 
                     <button
                       onClick={() => handlePrintReceipt(order)}
-                      className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2"
+                      className="flex-1 lg:flex-none text-white py-2 px-4 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2"
+                      style={{ backgroundColor: shop?.brand_color || '#073dbe' }}
                     >
                       <FiPrinter size={16} />
                       Print

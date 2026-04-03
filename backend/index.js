@@ -11,6 +11,7 @@ const port = process.env.PORT || 8080;
 
 // Middleware
 app.use(express.json());
+const shopFilter = require('./middleware/shopFilter');
 
 // Test DB connection if available
 if (db && typeof db.connect === 'function') {
@@ -23,6 +24,12 @@ if (db && typeof db.connect === 'function') {
 app.get('/', (req, res)=>{
   res.json({message: "backend running"})
 })
+
+const shopRoutes = require('./routes/shopRoutes')
+app.use('/shop', shopRoutes);
+
+const publicRoutes = require('./routes/publicRoutes')
+app.use('/public', publicRoutes);
 
 const userRoutes = require('./routes/userRoutes')
 app.use('/user', userRoutes);
